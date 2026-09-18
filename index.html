@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>奇美醫院臨床技能中心 OSCE 回饋分析儀表板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#0B1A3A;
+  --blue:#1B4F9C;
+  --blue-soft:#4A7FC1;
+  --orange:#F39220;
+  --yellow:#F0B429;
+  --red:#C0392B;
+  --ink:#101018;
+  --sidebar:#13131C;
+  --paper:#F3F1EA;
+  --line:#101018;
+  --grey:#B8B2A4;
+  --muted:#6B6B78;
+  --ok:#2E7D5B;
+  --shadow:6px 6px 0 var(--line);
+  --shadow-sm:4px 4px 0 var(--line);
+  --sb-w:262px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Noto Sans TC","Archivo",system-ui,sans-serif;
+  background:var(--paper);color:var(--ink);
+  font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.en{font-family:"Archivo","Noto Sans TC",sans-serif;letter-spacing:.04em}
+button,select,input{font-family:inherit;font-size:inherit}
+a{color:inherit}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  position:fixed;top:0;left:0;right:0;height:76px;z-index:60;
+  background:var(--blue);border-bottom:4px solid var(--line);
+  display:flex;align-items:center;gap:16px;padding:0 20px;
+}
+.brandmark{
+  width:52px;height:52px;background:#fff;border:3px solid var(--line);
+  box-shadow:4px 4px 0 rgba(0,0,0,.45);
+  display:grid;place-items:center;flex:none;
+}
+.brandmark span{font-weight:900;font-size:11px;color:var(--blue);line-height:1.05;text-align:center}
+.brandtext h1{margin:0;font-size:21px;font-weight:900;color:#fff;letter-spacing:.06em}
+.brandtext p{margin:0;font-size:11px;font-weight:700;color:#CFE0F5}
+.status{
+  margin-left:auto;display:flex;align-items:center;gap:8px;
+  background:var(--navy);color:#fff;border:3px solid var(--line);
+  border-radius:999px;padding:6px 16px;font-size:12px;font-weight:700;
+}
+.dot{width:9px;height:9px;border-radius:50%;background:#37D67A;box-shadow:0 0 0 3px rgba(55,214,122,.25)}
+.dot.offline{background:var(--yellow);box-shadow:0 0 0 3px rgba(240,180,41,.25)}
+.dot.error{background:var(--red);box-shadow:0 0 0 3px rgba(192,57,43,.25)}
+.menu-toggle{display:none;background:var(--navy);color:#fff;border:3px solid var(--line);padding:8px 12px;font-weight:900;cursor:pointer}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  position:fixed;top:76px;bottom:0;left:0;width:var(--sb-w);z-index:50;
+  background:var(--sidebar);border-right:4px solid var(--line);
+  overflow-y:auto;padding-bottom:70px;
+}
+.sb-group{padding:18px 18px 4px}
+.sb-title{
+  font-size:11px;font-weight:800;color:#fff;letter-spacing:.12em;
+  border-left:4px solid var(--yellow);padding-left:8px;margin-bottom:12px;
+}
+.sb-title.red{border-color:var(--red)}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:#9AA3B5;font-weight:700;margin-bottom:5px}
+.field select{
+  width:100%;padding:9px 10px;background:#fff;border:3px solid var(--line);
+  font-weight:700;font-size:13px;cursor:pointer;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 18px,calc(100% - 11px) 18px;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+}
+.nav{padding:4px 12px 0}
+.nav button{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  background:transparent;border:3px solid transparent;color:#D5D9E3;
+  padding:11px 12px;font-weight:700;font-size:14px;cursor:pointer;margin-bottom:4px;
+}
+.nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav button.active{background:var(--yellow);color:var(--ink);border-color:var(--line);box-shadow:4px 4px 0 rgba(0,0,0,.6)}
+.nav .ico{font-size:15px;width:18px;text-align:center}
+.linklist{padding:0 12px}
+.linklist a{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:11px 12px;color:#D5D9E3;text-decoration:none;font-weight:700;font-size:14px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+.linklist a:hover{color:var(--yellow)}
+.sb-foot{
+  position:absolute;bottom:0;left:0;right:0;background:var(--sidebar);
+  border-top:1px solid rgba(255,255,255,.12);padding:10px;
+  text-align:center;font-size:10px;color:#6E7686;line-height:1.5;
+}
+
+/* ---------- Main ---------- */
+.main{margin-left:var(--sb-w);padding:100px 28px 60px;max-width:1520px}
+.pagehead{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.pagehead .bar{width:14px;height:34px;background:var(--red);border:3px solid var(--line);flex:none;margin-top:4px}
+.pagehead h2{margin:0;font-size:30px;font-weight:900;letter-spacing:.02em}
+.pagehead p{margin:2px 0 0;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.08em}
+.pagehead .actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.btn{
+  background:var(--navy);color:#fff;border:3px solid var(--line);box-shadow:var(--shadow-sm);
+  padding:10px 16px;font-weight:800;font-size:13px;cursor:pointer;
+}
+.btn:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--line)}
+.btn:active{transform:translate(4px,4px);box-shadow:none}
+.btn.y{background:var(--yellow);color:var(--ink)}
+.btn.r{background:var(--red)}
+.btn.w{background:#fff;color:var(--ink)}
+.btn.sm{padding:6px 11px;font-size:12px;box-shadow:3px 3px 0 var(--line)}
+
+.card{background:#fff;border:3px solid var(--line);box-shadow:var(--shadow);padding:20px;margin-bottom:24px}
+.card > h3{
+  margin:0 0 4px;font-size:18px;font-weight:900;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+}
+.card > h3::before{content:"";width:9px;height:20px;background:var(--blue);flex:none}
+.card .sub{margin:0 0 16px;font-size:12px;color:var(--muted);font-weight:600}
+.grid{display:grid;gap:22px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+/* KPI */
+.kpi{background:#fff;border:3px solid var(--line);box-shadow:var(--shadow-sm);padding:16px 18px;position:relative;overflow:hidden}
+.kpi .tag{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em}
+.kpi .val{font-family:"Archivo",sans-serif;font-size:38px;font-weight:800;line-height:1.1;margin:4px 0 0}
+.kpi .unit{font-size:14px;font-weight:700;color:var(--muted);margin-left:4px}
+.kpi .note{font-size:11px;color:var(--muted);font-weight:600;margin-top:4px}
+.kpi::after{content:"";position:absolute;right:-18px;top:-18px;width:56px;height:56px;background:var(--yellow);transform:rotate(45deg)}
+.kpi.b::after{background:var(--blue)}
+.kpi.r::after{background:var(--red)}
+.kpi.n::after{background:var(--navy)}
+
+/* question table */
+.qrow{border:3px solid var(--line);margin-bottom:12px;background:#fff}
+.qrow .top{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:2px dashed #D8D4C8}
+.qrow .qno{
+  font-family:"Archivo",sans-serif;font-weight:800;font-size:13px;background:var(--navy);color:#fff;
+  padding:3px 9px;flex:none;border:2px solid var(--line)
+}
+.qrow .qtext{font-weight:700;font-size:15px;flex:1;min-width:200px}
+.qrow .qtext em{font-style:normal;font-size:11px;font-weight:700;color:var(--red);margin-left:6px}
+.qrow .qstat{display:flex;gap:18px;align-items:center;flex:none}
+.qrow .num{font-family:"Archivo",sans-serif;font-weight:800;font-size:24px;line-height:1}
+.qrow .num small{font-size:11px;color:var(--muted);display:block;font-family:"Noto Sans TC",sans-serif;font-weight:700}
+.badge{font-size:11px;font-weight:800;padding:4px 9px;border:2px solid var(--line);white-space:nowrap}
+.badge.a{background:var(--navy);color:#fff}
+.badge.b{background:var(--blue-soft);color:#fff}
+.badge.c{background:var(--yellow)}
+.badge.d{background:var(--red);color:#fff}
+.dist{display:flex;height:26px;border-top:0}
+.dist span{display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;overflow:hidden;white-space:nowrap}
+.dist span:not(:last-child){border-right:2px solid rgba(255,255,255,.55)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;font-weight:700;color:var(--muted);margin:2px 0 14px}
+.legend i{display:inline-block;width:12px;height:12px;border:2px solid var(--line);margin-right:5px;vertical-align:-2px}
+
+/* comments */
+.cmt{border-left:6px solid var(--yellow);background:#FBF9F3;border:2px solid var(--line);border-left-width:6px;padding:11px 13px;margin-bottom:10px}
+.cmt .meta{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px;display:flex;gap:10px;flex-wrap:wrap}
+.cmt .meta b{color:var(--blue)}
+.cmt p{margin:0;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.cmt.alt{border-left-color:var(--blue)}
+.search{width:100%;padding:9px 12px;border:3px solid var(--line);font-weight:600;margin-bottom:14px}
+
+/* insights */
+.ins{display:flex;gap:11px;align-items:flex-start;border:3px solid var(--line);padding:12px 14px;margin-bottom:10px;background:#fff}
+.ins .lv{font-size:11px;font-weight:800;padding:4px 8px;border:2px solid var(--line);flex:none;white-space:nowrap}
+.ins.high{background:#FDF0EE}.ins.high .lv{background:var(--red);color:#fff}
+.ins.mid{background:#FEF8E8}.ins.mid .lv{background:var(--yellow)}
+.ins.good{background:#EFF5FB}.ins.good .lv{background:var(--blue);color:#fff}
+.ins p{margin:0;font-size:14px}
+.ins p b{color:var(--ink)}
+
+.chartbox{position:relative;height:340px}
+.chartbox.tall{height:400px}
+.chartbox.short{height:260px}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl th,table.tbl td{border:2px solid var(--line);padding:8px 10px;text-align:center}
+table.tbl th{background:var(--navy);color:#fff;font-weight:800;font-size:12px}
+table.tbl td.l{text-align:left}
+table.tbl tbody tr:nth-child(even){background:#FAF8F2}
+
+.entrygrid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.entry{
+  border:3px solid var(--line);box-shadow:var(--shadow);padding:16px 22px;cursor:pointer;
+  font-weight:900;font-size:15px;color:#fff;background:var(--blue);min-width:190px;text-align:center;
+}
+.entry small{display:block;font-weight:700;font-size:11px;opacity:.85;margin-top:3px}
+.entry:hover{transform:translate(2px,2px);box-shadow:3px 3px 0 var(--line)}
+.entry.r{background:var(--red)}
+.entry.y{background:var(--yellow);color:var(--ink)}
+.entry.n{background:var(--navy)}
+
+.notice{border:3px solid var(--line);background:var(--yellow);padding:12px 16px;font-weight:700;font-size:13px;margin-bottom:22px;box-shadow:var(--shadow-sm)}
+.notice.err{background:#FDE2DE}
+.empty{padding:34px;text-align:center;color:var(--muted);font-weight:700;border:3px dashed var(--grey)}
+.hidden{display:none !important}
+.loader{position:fixed;inset:0;background:rgba(243,241,234,.94);z-index:90;display:grid;place-items:center}
+.loader .box{background:#fff;border:3px solid var(--line);box-shadow:var(--shadow);padding:26px 40px;text-align:center;font-weight:800}
+.spin{width:38px;height:38px;border:5px solid var(--navy);border-top-color:var(--yellow);border-radius:50%;margin:0 auto 12px;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}.btn:hover,.entry:hover{transform:none}}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+
+@media (max-width:1180px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:980px){
+  .sidebar{transform:translateX(-100%);transition:transform .2s}
+  .sidebar.open{transform:none}
+  .main{margin-left:0;padding:96px 16px 50px}
+  .menu-toggle{display:block}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .qrow .qstat{width:100%;justify-content:space-between}
+}
+@media print{
+  .sidebar,.topbar,.actions,.menu-toggle{display:none !important}
+  .main{margin:0;padding:0}
+  .card{break-inside:avoid;box-shadow:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="menu-toggle" id="menuToggle" aria-label="開關側邊選單">☰</button>
+  <div class="brandmark"><span>CM<br>Hospital</span></div>
+  <div class="brandtext">
+    <h1>臨床技能中心</h1>
+    <p class="en">OSCE FEEDBACK DASHBOARD</p>
+  </div>
+  <div class="status" id="statusPill"><span class="dot" id="statusDot"></span><span id="statusText">連線中…</span></div>
+</header>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sb-group">
+    <div class="sb-title en">▽ 篩選條件 FILTERS</div>
+    <div class="field">
+      <label for="fYear">年度 Year</label>
+      <select id="fYear"><option value="ALL">全部年度 All</option></select>
+    </div>
+    <div class="field">
+      <label for="fSession">場次 Session</label>
+      <select id="fSession"><option value="ALL">全部場次 All Sessions</option></select>
+    </div>
+    <div class="field">
+      <label for="fStation">站次 Station</label>
+      <select id="fStation"><option value="ALL">全部站次 All Stations</option></select>
+    </div>
+  </div>
+
+  <div class="sb-group" style="padding-bottom:0">
+    <div class="sb-title en">儀表板 DASHBOARD</div>
+  </div>
+  <nav class="nav" id="nav">
+    <button data-view="overview" class="active"><span class="ico">▤</span>綜合分析總覽</button>
+    <button data-view="examinerSP"><span class="ico">☑</span>考官評核 SP 分析</button>
+    <button data-view="examiner"><span class="ico">▥</span>考官回饋分析</button>
+    <button data-view="student"><span class="ico">✎</span>考生回饋分析</button>
+    <button data-view="sp"><span class="ico">☺</span>標準化病人回饋分析</button>
+  </nav>
+
+  <div class="sb-group" style="padding-bottom:0">
+    <div class="sb-title red en">問卷填寫 SURVEY ENTRY</div>
+  </div>
+  <div class="linklist" id="linklist"></div>
+
+  <div class="sb-foot">v1.0 · 臨床技能中心<br><span id="dataStamp">—</span></div>
+</aside>
+
+<main class="main" id="main"></main>
+
+<div class="loader" id="loader">
+  <div class="box"><div class="spin"></div>讀取 Google 試算表資料中…</div>
+</div>
+
+<script>
+/* =========================================================
+   1. 設定區（部署後只需要改這裡）
+   ========================================================= */
+const CONFIG = {
+  // 貼上 Apps Script 網頁應用程式的 /exec 網址
+  API_URL: '',
+  // 若 Code.gs 有設 TOKEN，這裡填相同字串
+  TOKEN: '',
+  // 側邊「問卷填寫」連結（換成你的 Google 表單網址）
+  FORMS: [
+    { name: '考官評核 SP',   url: '' },
+    { name: '考官回饋問卷',  url: '' },
+    { name: '考生回饋問卷',  url: '' },
+    { name: 'SP 回饋問卷',   url: '' }
+  ]
+};
+
+/* =========================================================
+   2. 問卷題目定義（題目全文取自學會版紙本問卷）
+   ========================================================= */
+const LIKERT      = ['非常不同意','不同意','無意見','同意','非常同意'];
+const LIKERT_SP   = ['完全不同意','不同意','無意見(中立)','同意','完全同意'];
+const DIFFICULTY  = ['非常簡單','簡單','剛好','困難','非常困難'];
+
+const SCHEMA = {
+  examinerSP: {
+    title:'考官評核 SP 分析', en:'EXAMINER RATING OF STANDARDIZED PATIENTS',
+    formName:'考官對標準化病人(SP)演出評核表', accent:'blue', scale:LIKERT_SP,
+    meta:[{col:'考試日期',label:'考試日期'},{col:'考官姓名',label:'考官'},{col:'標準化病人',label:'SP'}],
+    person:'考官姓名',
+    items:[
+      {col:'Q1',short:'演出一致性',text:'SP 演出可靠，演出一致性佳。'},
+      {col:'Q2',short:'刻意操弄訊息',text:'SP 刻意操弄訊息。',reverse:true},
+      {col:'Q3',short:'過度質疑考生',text:'SP 過度質疑或挑戰學生的問診。',reverse:true},
+      {col:'Q4',short:'症狀擬真',text:'SP 模擬的身體症狀、心情夠真實。'},
+      {col:'Q5',short:'表情符合角色',text:'SP 的表情能符合角色的要求。'},
+      {col:'Q6',short:'肢體語言',text:'SP 的肢體語言能符合角色的要求。'},
+      {col:'Q7',short:'自然應答',text:'SP 能夠自然的回答問診的問題。'},
+      {col:'Q8',short:'不逾越劇情',text:'SP 沒有與考生進行考題劇情以外的對話。'}
+    ],
+    texts:[{col:'總評語',title:'考官總評語'}]
+  },
+  examiner: {
+    title:'考官回饋分析', en:'EXAMINER FEEDBACK',
+    formName:'考官回饋問卷', accent:'red', scale:LIKERT,
+    meta:[{col:'考試日期',label:'考試日期'},{col:'考官姓名',label:'考官'},{col:'站次',label:'站次'}],
+    person:'考官姓名',
+    items:[
+      {col:'Q1',short:'內容與難度',text:'測驗內容及其難度合宜。'},
+      {col:'Q2',short:'評分項目',text:'評核表評分項目合宜。'},
+      {col:'Q3',short:'評分說明',text:'評分說明內容清楚、合宜。'},
+      {col:'Q4',short:'試題指引',text:'試題指引內容足夠。'},
+      {col:'Q5',short:'測驗時間',text:'測驗時間 (8 mins) 長短合宜。'},
+      {col:'Q6',short:'標示與動線',text:'試場各項標示、移動路線規劃清楚、合宜。'},
+      {col:'Q7',short:'鈴聲與廣播',text:'試場各項鈴聲、廣播清楚、合宜。'},
+      {col:'Q8',short:'試務運作',text:'試務運作流程順暢、試務人員紀律良好。'}
+    ],
+    texts:[
+      {col:'Q9',title:'對於本考題之建議'},
+      {col:'Q10',title:'對於 OSCE 整體活動之其他意見及建議'}
+    ]
+  },
+  student: {
+    title:'考生回饋分析', en:'EXAMINEE FEEDBACK',
+    formName:'考生回饋問卷', accent:'yellow', scale:LIKERT,
+    meta:[{col:'考試日期',label:'考試日期'}],
+    items:[
+      {col:'Q1',short:'貼近平日所學',text:'考試內容來自於平日所學內容。'},
+      {col:'Q2',short:'標示與動線',text:'試場各項標示與移動路線規劃清楚、合宜。'},
+      {col:'Q3',short:'試題指引',text:'試題指引內容清楚、訊息足夠。'},
+      {col:'Q4',short:'SP 站時間',text:'標準化病人測驗站考試時間 (8 mins) 長短合宜。'},
+      {col:'Q5',short:'SP 站難度',text:'標準化病人測驗站考試難度合宜。'},
+      {col:'Q6',short:'SP 擬真度',text:'各站標準化病人的演出皆像是真實病人。'},
+      {col:'Q7',short:'技能站時間',text:'技能測驗站考試時間 (8 mins) 長短合宜。'},
+      {col:'Q8',short:'技能站難度',text:'技能測驗站考試難度合宜。'},
+      {col:'Q9',short:'試務運作',text:'試務運作流程順暢、紀律良好。'}
+    ],
+    special:[{col:'Q10',text:'整體來說，測驗難度？',scale:DIFFICULTY,ideal:3}],
+    texts:[
+      {col:'Q11',title:'您對於考題有何建議'},
+      {col:'Q12',title:'對於 OSCE 整體有何建議'}
+    ]
+  },
+  sp: {
+    title:'標準化病人回饋分析', en:'STANDARDIZED PATIENT FEEDBACK',
+    formName:'標準化病人回饋問卷', accent:'navy', scale:LIKERT,
+    meta:[{col:'考試日期',label:'考試日期'},{col:'SP姓名',label:'SP'},{col:'站次',label:'站次'}],
+    person:'SP姓名',
+    items:[
+      {col:'Q1',short:'劇本演出順暢',text:'測驗劇本演出順暢。'},
+      {col:'Q2',short:'考前演練協助',text:'考前演練時考官或 SP 訓練師提供充足、良好的演練協助。'},
+      {col:'Q3',short:'劇本訊息足夠',text:'劇本提供之訊息足夠演練、演出之需要。'},
+      {col:'Q4',short:'演出次數負荷',text:'每梯演出次數尚可負擔。'},
+      {col:'Q5',short:'換場休息時間',text:'換場休息時間足夠。'},
+      {col:'Q6',short:'聯繫作業',text:'本次活動聯繫作業順暢。'}
+    ],
+    numeric:[
+      {col:'Q4.1',text:'今天的實際演出次數',unit:'次'},
+      {col:'Q4.2',text:'若超過體力負擔，您認為適宜的演出次數',unit:'次'}
+    ],
+    texts:[{col:'Q7',title:'對於此次 OSCE 整體活動之其他意見及建議'}]
+  }
+};
+const VIEW_ORDER = ['examinerSP','examiner','student','sp'];
+const DIST_COLORS = ['#A12B1E','#D9694A','#B8B2A4','#4A7FC1','#12356B'];
+
+/* =========================================================
+   3. 狀態
+   ========================================================= */
+const STATE = { raw:null, source:'live', filters:{year:'ALL',session:'ALL',station:'ALL'}, view:'overview' };
+const CHARTS = [];
+const $  = (s,r)=> (r||document).querySelector(s);
+const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* =========================================================
+   4. 資料讀取（JSONP，可直接放在 GitHub Pages）
+   ========================================================= */
+function jsonp(url, timeout){
+  return new Promise((resolve,reject)=>{
+    const cb = 'osceCB_' + Math.random().toString(36).slice(2);
+    const s = document.createElement('script');
+    const t = setTimeout(()=>{ cleanup(); reject(new Error('連線逾時')); }, timeout||20000);
+    function cleanup(){ clearTimeout(t); delete window[cb]; if(s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = d => { cleanup(); resolve(d); };
+    s.onerror = () => { cleanup(); reject(new Error('無法連線至 Apps Script')); };
+    s.src = url + (url.indexOf('?')<0?'?':'&') + 'callback=' + cb;
+    document.body.appendChild(s);
+  });
+}
+
+async function loadData(force){
+  setStatus('loading','讀取中…');
+  if(!CONFIG.API_URL){
+    STATE.raw = DEMO_DATA; STATE.source = 'demo';
+    setStatus('offline','離線示範資料');
+    $('#dataStamp').textContent = '示範資料（未設定 API）';
+    return;
+  }
+  try{
+    const url = CONFIG.API_URL + '?action=all'
+      + (CONFIG.TOKEN ? '&token='+encodeURIComponent(CONFIG.TOKEN) : '')
+      + (force ? '&nocache=1' : '');
+    const res = await jsonp(url);
+    if(!res || !res.ok) throw new Error((res && res.error) || '回傳格式錯誤');
+    STATE.raw = res.data; STATE.source = 'live';
+    setStatus('ok','資料連線正常');
+    $('#dataStamp').textContent = '更新於 ' + (res.generatedAt||'');
+  }catch(err){
+    STATE.raw = DEMO_DATA; STATE.source = 'demo';
+    setStatus('error','連線失敗，改用示範資料');
+    $('#dataStamp').textContent = '讀取失敗：' + err.message;
+  }
+}
+
+function setStatus(kind,text){
+  const dot = $('#statusDot');
+  dot.className = 'dot' + (kind==='offline'?' offline':kind==='error'?' error':'');
+  $('#statusText').textContent = text;
+}
+
+/* =========================================================
+   5. 基礎資料處理
+   ========================================================= */
+function toRecords(key){
+  const blk = STATE.raw && STATE.raw[key];
+  if(!blk || !blk.headers) return [];
+  return blk.rows.map(r=>{
+    const o = {};
+    blk.headers.forEach((h,i)=> o[h] = r[i]===undefined?'':r[i]);
+    o.__date = normDate(o['考試日期']);
+    o.__year = o.__date ? o.__date.split('.')[0] : '';
+    return o;
+  }).filter(o=>o.__date);
+}
+
+function normDate(v){
+  const s = String(v==null?'':v).trim();
+  const m = s.match(/^(\d{3})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/);
+  if(!m) return '';
+  return m[1] + '.' + String(m[2]).padStart(2,'0') + '.' + String(m[3]).padStart(2,'0');
+}
+function fmtDate(d){ return d ? d.replace(/\./g,'/') : '—'; }
+
+function filtered(key){
+  const f = STATE.filters;
+  return toRecords(key).filter(r=>{
+    if(f.year!=='ALL' && r.__year!==f.year) return false;
+    if(f.session!=='ALL' && r.__date!==f.session) return false;
+    if(f.station!=='ALL'){
+      if(!('站次' in r)) return true;
+      if(String(r['站次'])!==String(f.station)) return false;
+    }
+    return true;
+  });
+}
+
+const num = v => { const n = Number(v); return (v===''||v===null||v===undefined||isNaN(n)) ? null : n; };
+const avg = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : null;
+const r1  = v => v==null ? '—' : (Math.round(v*10)/10).toFixed(1);
+const r2  = v => v==null ? '—' : (Math.round(v*100)/100).toFixed(2);
+const pct = v => v==null ? '—' : Math.round(v*100) + '%';
+
+/** 單題統計 */
+function itemStat(rows,item){
+  const vals = rows.map(r=>num(r[item.col])).filter(v=>v!==null && v>=1 && v<=5);
+  const dist = [0,0,0,0,0];
+  vals.forEach(v=>{ dist[Math.round(v)-1]++; });
+  const m = avg(vals);
+  const positive = item.reverse ? (dist[0]+dist[1]) : (dist[3]+dist[4]);
+  const negative = item.reverse ? (dist[3]+dist[4]) : (dist[0]+dist[1]);
+  return {
+    col:item.col, short:item.short, text:item.text, reverse:!!item.reverse,
+    n:vals.length, mean:m, adj: m==null?null:(item.reverse?6-m:m),
+    dist, agree: vals.length? positive/vals.length : null,
+    disagree: vals.length? negative/vals.length : null
+  };
+}
+
+/** 整份問卷統計 */
+function sheetStat(key,rows){
+  const sc = SCHEMA[key];
+  const stats = sc.items.map(it=>itemStat(rows,it));
+  const valid = stats.filter(s=>s.adj!=null);
+  const comments = collectComments(key,rows);
+  return {
+    key, rows, stats,
+    composite: valid.length ? avg(valid.map(s=>s.adj)) : null,
+    agree: valid.length ? avg(stats.filter(s=>s.agree!=null).map(s=>s.agree)) : null,
+    n: rows.length, comments
+  };
+}
+
+function collectComments(key,rows){
+  const sc = SCHEMA[key]; const out = [];
+  (sc.texts||[]).forEach(t=>{
+    rows.forEach(r=>{
+      const v = String(r[t.col]==null?'':r[t.col]).trim();
+      if(v && v.length>1 && !/^[-—.。0]+$/.test(v)){
+        out.push({ date:r.__date, title:t.title, text:v,
+          who: sc.person ? String(r[sc.person]||'') : '',
+          station: r['站次']!==undefined && r['站次']!=='' ? String(r['站次']) : '' });
+      }
+    });
+  });
+  return out.sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:0);
+}
+
+function levelOf(adj){
+  if(adj==null) return {cls:'b',label:'無資料'};
+  if(adj>=4.5) return {cls:'a',label:'優良'};
+  if(adj>=4.0) return {cls:'b',label:'良好'};
+  if(adj>=3.5) return {cls:'c',label:'待觀察'};
+  return {cls:'d',label:'需改善'};
+}
+
+/* =========================================================
+   6. 共用 HTML 片段
+   ========================================================= */
+function kpi(tag,val,unit,note,cls){
+  return `<div class="kpi ${cls||''}">
+    <div class="tag">${esc(tag)}</div>
+    <div class="val">${val}${unit?`<span class="unit">${esc(unit)}</span>`:''}</div>
+    ${note?`<div class="note">${note}</div>`:''}
+  </div>`;
+}
+
+function distBar(dist,scale){
+  const total = dist.reduce((a,b)=>a+b,0);
+  if(!total) return '<div class="dist"><span style="flex:1;background:#DDD8CC;color:#6B6B78">無資料</span></div>';
+  return '<div class="dist">' + dist.map((c,i)=>{
+    if(!c) return '';
+    const p = c/total*100;
+    return `<span style="flex:${p};background:${DIST_COLORS[i]}" title="${esc(scale[i])}：${c} 人 (${Math.round(p)}%)">${p>9?Math.round(p)+'%':''}</span>`;
+  }).join('') + '</div>';
+}
+
+function legendHtml(scale){
+  return '<div class="legend">' + scale.map((s,i)=>
+    `<span><i style="background:${DIST_COLORS[i]}"></i>${esc(s)}</span>`).join('') + '</div>';
+}
+
+function qrowHtml(st,idx,scale){
+  const lv = levelOf(st.adj);
+  return `<div class="qrow">
+    <div class="top">
+      <span class="qno">${esc(st.col)}</span>
+      <span class="qtext">${esc(st.text)}${st.reverse?'<em>（反向題：分數越低越好）</em>':''}</span>
+      <span class="qstat">
+        <span class="num">${r2(st.mean)}<small>平均</small></span>
+        <span class="num">${pct(st.agree)}<small>${st.reverse?'正向率':'同意率'}</small></span>
+        <span class="num">${st.n}<small>填答</small></span>
+        <span class="badge ${lv.cls}">${lv.label}</span>
+      </span>
+    </div>
+    ${distBar(st.dist,scale)}
+  </div>`;
+}
+
+function commentsHtml(list,idPrefix){
+  if(!list.length) return '<div class="empty">此篩選條件下沒有文字建議</div>';
+  return `<input class="search" type="search" placeholder="輸入關鍵字篩選文字建議…" data-search="${idPrefix}">
+    <div data-cmtlist="${idPrefix}">` +
+    list.map(c=>`<div class="cmt ${c.title.indexOf('整體')>=0?'alt':''}" data-text="${esc(c.text)}">
+      <div class="meta"><b>${esc(c.title)}</b><span>${fmtDate(c.date)}</span>
+      ${c.who?`<span>${esc(c.who)}</span>`:''}${c.station?`<span>第 ${esc(c.station)} 站</span>`:''}</div>
+      <p>${esc(c.text)}</p></div>`).join('') + '</div>';
+}
+
+function insightsHtml(list){
+  if(!list.length) return '<div class="empty">目前沒有需要特別關注的項目</div>';
+  return list.map(i=>`<div class="ins ${i.level}"><span class="lv">${esc(i.tag)}</span><p>${i.html}</p></div>`).join('');
+}
+
+function canvas(id,cls){ return `<div class="chartbox ${cls||''}"><canvas id="${id}"></canvas></div>`; }
+
+/* =========================================================
+   7. 圖表
+   ========================================================= */
+Chart.defaults.font.family = "'Noto Sans TC','Archivo',sans-serif";
+Chart.defaults.font.weight = 600;
+Chart.defaults.color = '#101018';
+
+function destroyCharts(){ while(CHARTS.length){ const c = CHARTS.pop(); try{ c.destroy(); }catch(e){} } }
+function mk(id,cfg){
+  const el = document.getElementById(id); if(!el) return;
+  CHARTS.push(new Chart(el.getContext('2d'), cfg));
+}
+
+function radarChart(id,stats,label,color){
+  mk(id,{ type:'radar',
+    data:{ labels: stats.map(s=>s.short),
+      datasets:[{ label, data: stats.map(s=> s.adj==null?null:Math.round(s.adj*100)/100),
+        borderColor:color, backgroundColor:color+'2E', borderWidth:3,
+        pointBackgroundColor:color, pointBorderColor:'#101018', pointBorderWidth:2, pointRadius:4 }]},
+    options:{ maintainAspectRatio:false,
+      scales:{ r:{ min:1, max:5, ticks:{stepSize:1,backdropColor:'transparent'},
+        grid:{color:'#D8D4C8'}, angleLines:{color:'#C9C4B8'},
+        pointLabels:{font:{size:12,weight:700}} } },
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label:c=>` ${c.label}：${c.formattedValue} 分`,
+          afterLabel:c=> stats[c.dataIndex].reverse?'（反向題，已轉換為正向分數）':'' } } } }});
+}
+
+function trendChart(id,labels,datasets,min){
+  mk(id,{ type:'line',
+    data:{ labels, datasets: datasets.map(d=>({
+      label:d.label, data:d.data, borderColor:d.color, backgroundColor:d.color+'22',
+      borderWidth:3, tension:.25, pointRadius:4, pointBackgroundColor:d.color,
+      pointBorderColor:'#101018', pointBorderWidth:2, spanGaps:true })) },
+    options:{ maintainAspectRatio:false,
+      scales:{ y:{ min: min||3, max:5, grid:{color:'#E4E0D5'} },
+               x:{ grid:{display:false}, ticks:{maxRotation:60,minRotation:45,font:{size:10}} } },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:14,font:{size:12,weight:700}} },
+        tooltip:{ callbacks:{ label:c=>` ${c.dataset.label}：${c.formattedValue} 分` } } } }});
+}
+
+function barChart(id,labels,data,color,opts){
+  opts = opts || {};
+  mk(id,{ type:'bar',
+    data:{ labels, datasets:[{ data, backgroundColor:color, borderColor:'#101018', borderWidth:2,
+      barPercentage:.72, categoryPercentage:.78 }] },
+    options:{ maintainAspectRatio:false, indexAxis: opts.horizontal?'y':'x',
+      scales:{ x:{ min:opts.min!=null?opts.min:undefined, max:opts.max, grid:{display:!opts.horizontal?false:true,color:'#E4E0D5'},
+                   ticks:{font:{size:11}} },
+               y:{ min:opts.horizontal?undefined:(opts.min!=null?opts.min:0), max:opts.horizontal?undefined:opts.max,
+                   grid:{color:'#E4E0D5'}, ticks:{font:{size:11}} } },
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label:c=>` ${c.formattedValue}${opts.unit||''}` } } } }});
+}
+
+function stackChart(id,labels,dist,scale){
+  mk(id,{ type:'bar',
+    data:{ labels, datasets: scale.map((s,i)=>({ label:s, data:dist.map(d=>d[i]),
+      backgroundColor:DIST_COLORS[i], borderColor:'#101018', borderWidth:1 })) },
+    options:{ maintainAspectRatio:false,
+      scales:{ x:{stacked:true,grid:{display:false}}, y:{stacked:true,grid:{color:'#E4E0D5'}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:13,font:{size:11,weight:700}}} } }});
+}
+
+/* =========================================================
+   8. 分析建議（規則式）
+   ========================================================= */
+function buildInsights(key,S){
+  const out = [];
+  const sc = SCHEMA[key];
+  if(!S.n){ return [{level:'mid',tag:'無資料',html:'此篩選條件下沒有任何填答紀錄，請放寬年度或場次條件。'}]; }
+
+  S.stats.filter(s=>s.adj!=null).sort((a,b)=>a.adj-b.adj).forEach(s=>{
+    if(s.adj<3.5){
+      out.push({level:'high',tag:'優先改善',
+        html:`<b>${esc(s.col)} ${esc(s.short)}</b>（${esc(s.text)}）平均 ${r2(s.mean)} 分，已低於 3.5 的警戒線，建議列入下一次考務檢討的第一順位。`});
+    }else if(s.adj<4.0){
+      out.push({level:'mid',tag:'建議關注',
+        html:`<b>${esc(s.col)} ${esc(s.short)}</b> 平均 ${r2(s.mean)} 分，${s.reverse?'正向':'同意'}率 ${pct(s.agree)}，尚有改善空間。`});
+    }
+  });
+
+  S.stats.forEach(s=>{
+    if(s.n>=10 && s.disagree!=null && s.disagree>=0.10 && s.adj!=null && s.adj>=4.0){
+      out.push({level:'mid',tag:'意見分歧',
+        html:`<b>${esc(s.col)} ${esc(s.short)}</b> 整體平均尚可，但有 ${pct(s.disagree)}（${s.reverse?s.dist[3]+s.dist[4]:s.dist[0]+s.dist[1]} 人）給出負向評價，建議看看同場次的文字建議。`});
+    }
+  });
+
+  if(key==='student'){
+    const d = difficultyStat(S.rows);
+    if(d.n){
+      const hard = (d.dist[3]+d.dist[4])/d.n, easy = (d.dist[0]+d.dist[1])/d.n;
+      if(hard>=0.30) out.push({level:'high',tag:'難度偏高',html:`有 ${pct(hard)} 的考生認為測驗<b>偏難或非常難</b>，建議檢視站別配置與試題指引的訊息量。`});
+      else if(easy>=0.30) out.push({level:'mid',tag:'難度偏低',html:`有 ${pct(easy)} 的考生認為測驗<b>偏簡單</b>，可考慮提高鑑別度。`});
+      else out.push({level:'good',tag:'難度合宜',html:`${pct(d.dist[2]/d.n)} 的考生認為難度「剛好」，整體難度設定落在理想區間。`});
+    }
+    const sps = S.stats.filter(s=>['Q4','Q5','Q6'].indexOf(s.col)>=0 && s.adj!=null);
+    const sks = S.stats.filter(s=>['Q7','Q8'].indexOf(s.col)>=0 && s.adj!=null);
+    if(sps.length && sks.length){
+      const a = avg(sps.map(s=>s.adj)), b = avg(sks.map(s=>s.adj));
+      if(Math.abs(a-b)>=0.25){
+        out.push({level:'mid',tag:'站別落差',
+          html:`SP 測驗站平均 ${r2(a)} 分、技能測驗站平均 ${r2(b)} 分，兩類站別的考生感受相差 ${r2(Math.abs(a-b))} 分，建議針對<b>${a<b?'SP 測驗站':'技能測驗站'}</b>檢討時間與難度設定。`});
+      }
+    }
+  }
+
+  if(key==='sp'){
+    const act = S.rows.map(r=>num(r['Q4.1'])).filter(v=>v!==null);
+    const sug = S.rows.map(r=>num(r['Q4.2'])).filter(v=>v!==null);
+    if(act.length){
+      out.push({level: sug.length && avg(act)>avg(sug) ? 'mid':'good', tag:'演出負荷',
+        html:`SP 平均每人每場演出 <b>${r1(avg(act))} 次</b>（最多 ${Math.max.apply(null,act)} 次）${sug.length?`；有 ${sug.length} 位 SP 填寫建議次數，平均為 ${r1(avg(sug))} 次`:''}。`});
+    }
+    if(sug.length>=3 && sug.length/Math.max(S.n,1) >= 0.25){
+      out.push({level:'high',tag:'體力負擔',
+        html:`有 <b>${sug.length} 位（${pct(sug.length/S.n)}）</b>SP 填寫了「適宜演出次數」，代表他們認為當天演出次數<b>超過體力負擔</b>，建議調整梯次或增聘 SP。`});
+    }
+  }
+
+  if(key==='examinerSP'){
+    const rev = S.stats.filter(s=>s.reverse && s.mean!=null);
+    if(rev.length){
+      out.push({level:'good',tag:'反向題',
+        html:`Q2、Q3 為反向題（分數越低越好），目前平均為 ${rev.map(s=>esc(s.col)+' '+r2(s.mean)).join('、')} 分，代表 SP 大致沒有操弄訊息或過度挑戰考生。`});
+    }
+  }
+
+  if(key==='examiner'){
+    const byStation = groupMean(S.rows,'站次',sc.items);
+    const low = byStation.filter(g=>g.mean!=null).sort((a,b)=>a.mean-b.mean)[0];
+    if(low && byStation.length>2 && low.mean<4.2){
+      out.push({level:'mid',tag:'站別差異',
+        html:`第 <b>${esc(low.key)}</b> 站的考官整體評價最低（${r2(low.mean)} 分，${low.n} 份），建議優先檢視該站的評核表與試題指引。`});
+    }
+  }
+
+  dataQuality(key,S).forEach(x=>out.push(x));
+
+  if(!out.length) out.push({level:'good',tag:'表現良好',html:'所有題項平均皆在 4.0 分以上，未偵測到需要立即處理的項目。'});
+  return out.slice(0,10);
+}
+
+/** 登錄方向檢查：同一題在某場次的平均與整體方向相反，多半是量表反向登錄 */
+function dataQuality(key,S){
+  const out = [];
+  S.stats.forEach(st=>{
+    if(st.adj==null || st.adj<4) return;
+    const item = SCHEMA[key].items.find(i=>i.col===st.col);
+    const bySess = new Map();
+    S.rows.forEach(r=>{ const v=num(r[st.col]); if(v===null) return;
+      if(!bySess.has(r.__date)) bySess.set(r.__date,[]); bySess.get(r.__date).push(v); });
+    const odd = Array.from(bySess.entries())
+      .map(([d,v])=>({d,m:avg(v),n:v.length}))
+      .filter(x=> x.n>=3 && (item.reverse ? x.m>=4 : x.m<=2));
+    if(odd.length){
+      out.push({level:'mid',tag:'資料品質',
+        html:`<b>${esc(st.col)} ${esc(st.short)}</b> 在 ${odd.map(x=>fmtDate(x.d)).join('、')} 的平均為 ${odd.map(x=>r2(x.m)).join('、')} 分，與其他場次方向相反，建議確認該場次是否<b>把量表方向登錄反了</b>，以免拉低整題平均。`});
+    }
+  });
+  return out.slice(0,2);
+}
+
+function difficultyStat(rows){
+  const vals = rows.map(r=>num(r['Q10'])).filter(v=>v!==null&&v>=1&&v<=5);
+  const dist=[0,0,0,0,0]; vals.forEach(v=>dist[Math.round(v)-1]++);
+  return {n:vals.length,dist,mean:avg(vals)};
+}
+
+function groupMean(rows,field,items){
+  const map = new Map();
+  rows.forEach(r=>{
+    const k = String(r[field]==null?'':r[field]).trim(); if(!k) return;
+    if(!map.has(k)) map.set(k,[]);
+    const v = items.map(it=>{ const x=num(r[it.col]); return x==null?null:(it.reverse?6-x:x); }).filter(x=>x!==null);
+    if(v.length) map.get(k).push(avg(v));
+  });
+  return Array.from(map.entries()).map(([k,v])=>({key:k,mean:avg(v),n:v.length}))
+    .sort((a,b)=> isNaN(+a.key)||isNaN(+b.key) ? a.key.localeCompare(b.key) : (+a.key)-(+b.key));
+}
+
+function sessionSeries(key,rows){
+  const sc = SCHEMA[key]; const map = new Map();
+  rows.forEach(r=>{
+    const v = sc.items.map(it=>{ const x=num(r[it.col]); return x==null?null:(it.reverse?6-x:x); }).filter(x=>x!==null);
+    if(!v.length) return;
+    if(!map.has(r.__date)) map.set(r.__date,[]);
+    map.get(r.__date).push(avg(v));
+  });
+  return Array.from(map.entries()).map(([d,v])=>({date:d,mean:avg(v),n:v.length}))
+    .sort((a,b)=> a.date<b.date?-1:1);
+}
+
+/* =========================================================
+   9. 畫面：總覽
+   ========================================================= */
+function renderOverview(){
+  const S = {}; VIEW_ORDER.forEach(k=> S[k] = sheetStat(k,filtered(k)));
+  const totalN = VIEW_ORDER.reduce((s,k)=>s+S[k].n,0);
+  const totalC = VIEW_ORDER.reduce((s,k)=>s+S[k].comments.length,0);
+  const comps  = VIEW_ORDER.map(k=>S[k].composite).filter(v=>v!=null);
+  const dates  = new Set(); VIEW_ORDER.forEach(k=> S[k].rows.forEach(r=>dates.add(r.__date)));
+
+  const warn = [];
+  VIEW_ORDER.forEach(k=> S[k].stats.forEach(s=>{
+    if(s.adj!=null && s.adj<4.2 && s.n>=5) warn.push({key:k,s});
+  }));
+  warn.sort((a,b)=>a.s.adj-b.s.adj);
+
+  const allC = []; VIEW_ORDER.forEach(k=> S[k].comments.forEach(c=> allC.push(Object.assign({src:SCHEMA[k].title},c))));
+  allC.sort((a,b)=> a.date<b.date?1:-1);
+
+  let h = pageHead('奇美醫院臨床技能中心 OSCE 成效儀表板','OSCE EFFECTIVENESS & INSIGHT DASHBOARD',true);
+
+  h += `<div class="grid g4" style="margin-bottom:24px">
+    ${kpi('總回饋份數 TOTAL RESPONSES', totalN, '份', '四份問卷合計','n')}
+    ${kpi('分析場次 SESSIONS', dates.size, '場', '涵蓋 '+yearsLabel(),'b')}
+    ${kpi('整體平均分 OVERALL MEAN', comps.length?r2(avg(comps)):'—', '/5', '四份問卷平均（反向題已轉換）','y')}
+    ${kpi('文字建議 COMMENTS', totalC, '則', '可於各分頁閱讀全文','r')}
+  </div>`;
+
+  h += `<div class="card"><h3>四份問卷整體表現</h3>
+    <p class="sub">點選卡片可直接進入該問卷的完整逐題分析</p>
+    <div class="grid g4">` + VIEW_ORDER.map(k=>{
+      const lv = levelOf(S[k].composite);
+      return `<div class="kpi ${({blue:'b',red:'r',yellow:'',navy:'n'})[SCHEMA[k].accent]}" style="cursor:pointer" data-goto="${k}">
+        <div class="tag">${esc(SCHEMA[k].formName)}</div>
+        <div class="val">${r2(S[k].composite)}<span class="unit">/5</span></div>
+        <div class="note">${S[k].n} 份填答　<span class="badge ${lv.cls}" style="padding:1px 6px">${lv.label}</span></div>
+      </div>`;
+    }).join('') + `</div>
+    <div class="grid g2" style="margin-top:22px">
+      <div>${canvas('ovBar','short')}</div>
+      <div>${canvas('ovTrend','short')}</div>
+    </div></div>`;
+
+  h += `<div class="card"><h3>需要關注的題項</h3>
+    <p class="sub">四份問卷中平均低於 4.2 分且填答數 ≥ 5 的題目，由低到高排序</p>` +
+    (warn.length ? `<table class="tbl"><thead><tr><th style="width:140px">問卷</th><th>題目</th><th style="width:80px">平均</th><th style="width:90px">同意率</th><th style="width:70px">份數</th><th style="width:90px">等級</th></tr></thead><tbody>` +
+      warn.slice(0,12).map(w=>{ const lv=levelOf(w.s.adj); return `<tr>
+        <td>${esc(SCHEMA[w.key].formName)}</td>
+        <td class="l">${esc(w.s.col)}　${esc(w.s.text)}</td>
+        <td><b>${r2(w.s.mean)}</b></td><td>${pct(w.s.agree)}</td><td>${w.s.n}</td>
+        <td><span class="badge ${lv.cls}">${lv.label}</span></td></tr>`;}).join('') +
+      '</tbody></table>' : '<div class="empty">所有題項平均皆達 4.2 分以上</div>') + '</div>';
+
+  h += `<div class="card"><h3>最新文字建議</h3>
+    <p class="sub">四份問卷中最近的 8 則質性回饋</p>` +
+    (allC.length ? allC.slice(0,8).map(c=>`<div class="cmt ${c.src.indexOf('考生')>=0?'alt':''}">
+      <div class="meta"><b>${esc(c.src)}</b><span>${esc(c.title)}</span><span>${fmtDate(c.date)}</span>${c.who?`<span>${esc(c.who)}</span>`:''}</div>
+      <p>${esc(c.text)}</p></div>`).join('') : '<div class="empty">此篩選條件下沒有文字建議</div>') + '</div>';
+
+  h += `<div class="card"><h3>前往各問卷分析</h3><p class="sub">或使用左側選單切換</p>
+    <div class="entrygrid">` + VIEW_ORDER.map(k=>
+      `<button class="entry ${({blue:'',red:'r',yellow:'y',navy:'n'})[SCHEMA[k].accent]}" data-goto="${k}">
+        ${esc(SCHEMA[k].title)}<small>${esc(SCHEMA[k].en)}</small></button>`).join('') + '</div></div>';
+
+  $('#main').innerHTML = h;
+
+  barChart('ovBar', VIEW_ORDER.map(k=>SCHEMA[k].formName), VIEW_ORDER.map(k=> S[k].composite==null?null:Math.round(S[k].composite*100)/100),
+    ['#1B4F9C','#C0392B','#F0B429','#0B1A3A'], {horizontal:true,min:1,max:5,unit:' 分'});
+
+  const allDates = Array.from(dates).sort();
+  trendChart('ovTrend', allDates.map(fmtDate), VIEW_ORDER.map(k=>{
+    const ser = sessionSeries(k,S[k].rows);
+    const m = new Map(ser.map(x=>[x.date,x.mean]));
+    return { label:SCHEMA[k].formName, color:({blue:'#1B4F9C',red:'#C0392B',yellow:'#F0B429',navy:'#0B1A3A'})[SCHEMA[k].accent],
+      data: allDates.map(d=> m.has(d)? Math.round(m.get(d)*100)/100 : null) };
+  }));
+}
+
+function yearsLabel(){
+  const f = STATE.filters;
+  if(f.session!=='ALL') return fmtDate(f.session);
+  if(f.year!=='ALL') return f.year + ' 學年度';
+  return '全部年度';
+}
+
+/* =========================================================
+   10. 畫面：單一問卷分析
+   ========================================================= */
+function pageHead(title,en,isOverview){
+  return `<div class="pagehead">
+    <div class="bar"></div>
+    <div><h2>${esc(title)}</h2><p class="en">${esc(en)}</p></div>
+    <div class="actions">
+      ${isOverview?'':'<button class="btn w sm" data-act="csv">匯出逐題 CSV</button><button class="btn w sm" data-act="csvc">匯出文字建議 CSV</button>'}
+      <button class="btn w sm" data-act="print">列印 / 存 PDF</button>
+      <button class="btn y" data-act="refresh">↻ 重新整理資料</button>
+    </div>
+  </div>` + sourceNotice();
+}
+
+function sourceNotice(){
+  if(STATE.source==='live') return '';
+  const msg = CONFIG.API_URL
+    ? '目前顯示的是內建示範資料：無法連線到 Apps Script，請確認網頁應用程式已部署為「任何人皆可存取」。'
+    : '目前顯示的是內建示範資料（匯入自現有試算表）。請在 index.html 的 CONFIG.API_URL 貼上 Apps Script 的 /exec 網址，即可改讀取線上即時資料。';
+  return `<div class="notice ${CONFIG.API_URL?'err':''}">⚑ ${esc(msg)}</div>`;
+}
+
+function renderSheet(key){
+  const sc = SCHEMA[key];
+  const S  = sheetStat(key, filtered(key));
+  const accentColor = ({blue:'#1B4F9C',red:'#C0392B',yellow:'#E09B12',navy:'#0B1A3A'})[sc.accent];
+  const sessions = sessionSeries(key,S.rows);
+
+  let h = pageHead(sc.title, sc.en);
+
+  h += `<div class="grid g4" style="margin-bottom:24px">
+    ${kpi('填答份數 RESPONSES', S.n, '份', esc(sc.formName),'n')}
+    ${kpi('整體平均 MEAN SCORE', r2(S.composite), '/5', sc.items.some(i=>i.reverse)?'反向題已轉換為正向分數':'共 '+sc.items.length+' 個題項','b')}
+    ${kpi('平均同意率 AGREEMENT', pct(S.agree), '', '回答「同意／非常同意」的比例','y')}
+    ${kpi('文字建議 COMMENTS', S.comments.length, '則', '涵蓋 '+sessions.length+' 個場次','r')}
+  </div>`;
+
+  h += `<div class="grid g2">
+    <div class="card"><h3>題項雷達圖</h3><p class="sub">各題平均分（1–5 分，越外圈越好）</p>${canvas('rad')}</div>
+    <div class="card"><h3>各場次趨勢</h3><p class="sub">每個考試日期的整體平均分</p>${canvas('trd')}</div>
+  </div>`;
+
+  h += `<div class="card"><h3>逐題分析</h3>
+    <p class="sub">題目全文取自${esc(sc.formName)}（學會版），色帶為五點量表的作答分布</p>
+    ${legendHtml(sc.scale)}
+    ${S.n ? S.stats.map((s,i)=>qrowHtml(s,i,sc.scale)).join('') : '<div class="empty">此篩選條件下沒有填答資料</div>'}
+  </div>`;
+
+  h += extrasHtml(key,S);
+
+  h += `<div class="card"><h3>文字建議</h3>
+    <p class="sub">共 ${S.comments.length} 則${(sc.texts||[]).length>1?'，分別來自 '+sc.texts.map(t=>t.title).join(' / '):''}</p>
+    ${commentsHtml(S.comments,key)}</div>`;
+
+  h += `<div class="card"><h3>分析與行動建議</h3>
+    <p class="sub">依 3.5／4.0 分警戒線與作答分歧度自動產生，供考務檢討會參考</p>
+    ${insightsHtml(buildInsights(key,S))}</div>`;
+
+  $('#main').innerHTML = h;
+  $('#main').dataset.key = key;
+
+  radarChart('rad', S.stats, sc.formName, accentColor);
+  trendChart('trd', sessions.map(s=>fmtDate(s.date)),
+    [{label:'整體平均', color:accentColor, data:sessions.map(s=>Math.round(s.mean*100)/100)}]);
+  extrasCharts(key,S,accentColor);
+
+  window.__export = { key, S };
+}
+
+function extrasHtml(key,S){
+  const sc = SCHEMA[key];
+  if(!S.n) return '';
+
+  if(key==='examiner'){
+    const g = groupMean(S.rows,'站次',sc.items);
+    return `<div class="grid g2">
+      <div class="card"><h3>各站次評價</h3><p class="sub">考官對不同站別的整體平均（點數＝填答份數）</p>${canvas('exStation','short')}</div>
+      <div class="card"><h3>逐題作答分布</h3><p class="sub">各題五點量表的人數堆疊</p>${canvas('exStack','short')}</div>
+    </div>` + (g.length>1 ? `<div class="card"><h3>站次明細</h3><p class="sub">依站次排序，可搭配左側站次篩選深入查看</p>
+      <table class="tbl"><thead><tr><th>站次</th><th>填答份數</th><th>整體平均</th><th>等級</th></tr></thead><tbody>` +
+      g.map(x=>{const lv=levelOf(x.mean);return `<tr><td>第 ${esc(x.key)} 站</td><td>${x.n}</td><td><b>${r2(x.mean)}</b></td><td><span class="badge ${lv.cls}">${lv.label}</span></td></tr>`;}).join('') +
+      '</tbody></table></div>' : '');
+  }
+
+  if(key==='student'){
+    const d = difficultyStat(S.rows);
+    const rows = DIFFICULTY.map((lab,i)=>`<tr><td class="l">${esc(lab)}</td><td>${d.dist[i]}</td><td>${d.n?Math.round(d.dist[i]/d.n*100):0}%</td></tr>`).join('');
+    return `<div class="grid g2">
+      <div class="card"><h3>Q10 整體測驗難度</h3>
+        <p class="sub">整體來說，測驗難度？（1 非常簡單 – 3 剛好 – 5 非常困難，越接近 3 越理想）</p>
+        ${canvas('stDiff','short')}
+        <table class="tbl" style="margin-top:14px"><thead><tr><th class="l">選項</th><th>人數</th><th>占比</th></tr></thead><tbody>${rows}
+        <tr><td class="l"><b>難度平均</b></td><td colspan="2"><b>${r2(d.mean)}</b>（理想值 3.00）</td></tr></tbody></table></div>
+      <div class="card"><h3>SP 站 vs 技能站</h3>
+        <p class="sub">考生對兩類測驗站在時間與難度上的感受差異</p>${canvas('stCmp','short')}
+        <p class="sub" style="margin-top:12px">Q4／Q5／Q6 為標準化病人站，Q7／Q8 為技能測驗站。</p></div>
+    </div>`;
+  }
+
+  if(key==='sp'){
+    const bySess = new Map();
+    S.rows.forEach(r=>{
+      const a = num(r['Q4.1']); if(a===null) return;
+      if(!bySess.has(r.__date)) bySess.set(r.__date,[]);
+      bySess.get(r.__date).push(a);
+    });
+    const sess = Array.from(bySess.entries()).map(([d,v])=>({d,mean:avg(v),max:Math.max.apply(null,v),n:v.length}))
+      .sort((a,b)=>a.d<b.d?-1:1);
+    const over = S.rows.filter(r=>num(r['Q4.2'])!==null);
+    return `<div class="grid g2">
+      <div class="card"><h3>每場平均演出次數</h3>
+        <p class="sub">Q4.1 今天的實際演出次數（依考試日期）</p>${canvas('spCount','short')}</div>
+      <div class="card"><h3>體力負擔警訊</h3>
+        <p class="sub">有填寫 Q4.2「適宜演出次數」代表當天演出已超過體力負擔</p>
+        ${over.length ? `<table class="tbl"><thead><tr><th>考試日期</th><th>SP</th><th>站次</th><th>實際次數</th><th>建議次數</th></tr></thead><tbody>` +
+          over.sort((a,b)=>a.__date<b.__date?1:-1).slice(0,14).map(r=>`<tr><td>${fmtDate(r.__date)}</td><td>${esc(r['SP姓名']||'')}</td>
+            <td>${esc(r['站次']||'')}</td><td><b>${esc(r['Q4.1'])}</b></td><td>${esc(r['Q4.2'])}</td></tr>`).join('') +
+          `</tbody></table><p class="sub" style="margin-top:10px">共 ${over.length} 筆，表格顯示最近 14 筆。</p>`
+          : '<div class="empty">此篩選條件下沒有 SP 反映演出次數超出負荷</div>'}</div>
+    </div>` + (sess.length ? `<div class="card"><h3>各場次演出次數明細</h3><p class="sub">平均／最高演出次數與填答人數</p>
+      <table class="tbl"><thead><tr><th>考試日期</th><th>填答 SP 數</th><th>平均演出次數</th><th>單人最高次數</th></tr></thead><tbody>` +
+      sess.slice().reverse().map(x=>`<tr><td>${fmtDate(x.d)}</td><td>${x.n}</td><td><b>${r1(x.mean)}</b></td><td>${x.max}</td></tr>`).join('') +
+      '</tbody></table></div>' : '');
+  }
+
+  if(key==='examinerSP'){
+    const named = S.rows.filter(r=>String(r['標準化病人']||'').trim());
+    const bySP = groupMean(named,'標準化病人',sc.items);
+    const byEx = groupMean(S.rows,'考官姓名',sc.items);
+    return `<div class="grid g2">
+      <div class="card"><h3>SP 個別表現</h3>
+        <p class="sub">僅統計有填寫標準化病人姓名的紀錄（反向題已轉換）</p>
+        ${bySP.length ? `<table class="tbl"><thead><tr><th class="l">標準化病人</th><th>受評次數</th><th>平均</th><th>等級</th></tr></thead><tbody>` +
+          bySP.slice().sort((a,b)=>b.mean-a.mean).map(x=>{const lv=levelOf(x.mean);return `<tr><td class="l">${esc(x.key)}</td><td>${x.n}</td><td><b>${r2(x.mean)}</b></td><td><span class="badge ${lv.cls}">${lv.label}</span></td></tr>`;}).join('') +
+          '</tbody></table>' : '<div class="empty">此篩選條件下的紀錄未填寫 SP 姓名，建議在試算表補上「標準化病人」欄位以利個別追蹤</div>'}</div>
+      <div class="card"><h3>評核逐題分布</h3><p class="sub">各題五點量表的人數堆疊（Q2、Q3 為反向題）</p>${canvas('spStack','short')}</div>
+    </div>` + (byEx.length>1 ? `<div class="card"><h3>各考官評分傾向</h3>
+      <p class="sub">用於檢視評分者之間的寬嚴差異，份數少時僅供參考</p>
+      <table class="tbl"><thead><tr><th class="l">考官</th><th>評核份數</th><th>平均給分</th></tr></thead><tbody>` +
+      byEx.slice().sort((a,b)=>b.mean-a.mean).map(x=>`<tr><td class="l">${esc(x.key)}</td><td>${x.n}</td><td><b>${r2(x.mean)}</b></td></tr>`).join('') +
+      '</tbody></table></div>' : '');
+  }
+  return '';
+}
+
+function extrasCharts(key,S,color){
+  if(!S.n) return;
+  const sc = SCHEMA[key];
+  if(key==='examiner'){
+    const g = groupMean(S.rows,'站次',sc.items);
+    barChart('exStation', g.map(x=>'第'+x.key+'站'), g.map(x=>Math.round(x.mean*100)/100), color, {min:3,max:5,unit:' 分'});
+    stackChart('exStack', S.stats.map(s=>s.col+' '+s.short), S.stats.map(s=>s.dist), sc.scale);
+  }
+  if(key==='student'){
+    const d = difficultyStat(S.rows);
+    mk('stDiff',{ type:'bar',
+      data:{ labels:DIFFICULTY, datasets:[{ data:d.dist,
+        backgroundColor:['#A12B1E','#D9694A','#2E7D5B','#4A7FC1','#12356B'], borderColor:'#101018', borderWidth:2 }]},
+      options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ x:{grid:{display:false}}, y:{grid:{color:'#E4E0D5'}} } }});
+    const pick = c => { const s = S.stats.find(x=>x.col===c); return s && s.adj!=null ? Math.round(s.adj*100)/100 : null; };
+    mk('stCmp',{ type:'bar',
+      data:{ labels:['測驗時間','測驗難度'],
+        datasets:[
+          { label:'標準化病人站', data:[pick('Q4'),pick('Q5')], backgroundColor:'#1B4F9C', borderColor:'#101018', borderWidth:2 },
+          { label:'技能測驗站',   data:[pick('Q7'),pick('Q8')], backgroundColor:'#F0B429', borderColor:'#101018', borderWidth:2 }]},
+      options:{ maintainAspectRatio:false, scales:{ y:{min:3,max:5,grid:{color:'#E4E0D5'}}, x:{grid:{display:false}} },
+        plugins:{ legend:{position:'bottom',labels:{boxWidth:14,font:{weight:700}}} } }});
+  }
+  if(key==='sp'){
+    const bySess = new Map();
+    S.rows.forEach(r=>{ const a=num(r['Q4.1']); if(a===null) return;
+      if(!bySess.has(r.__date)) bySess.set(r.__date,[]); bySess.get(r.__date).push(a); });
+    const sess = Array.from(bySess.entries()).sort((a,b)=>a[0]<b[0]?-1:1);
+    barChart('spCount', sess.map(x=>fmtDate(x[0])), sess.map(x=>Math.round(avg(x[1])*10)/10), color, {min:0,unit:' 次'});
+  }
+  if(key==='examinerSP'){
+    stackChart('spStack', S.stats.map(s=>s.col+(s.reverse?'↓':'')+' '+s.short), S.stats.map(s=>s.dist), sc.scale);
+  }
+}
+
+/* =========================================================
+   11. 篩選器、導覽與事件
+   ========================================================= */
+function buildFilters(){
+  const dates = new Set();
+  const stations = new Set();
+  Object.keys(SCHEMA).forEach(k=> toRecords(k).forEach(r=>{
+    dates.add(r.__date);
+    const st = r['站次']; if(st!=='' && st!==undefined && st!==null) stations.add(String(st));
+  }));
+  const all = Array.from(dates).sort().reverse();
+  const years = Array.from(new Set(all.map(d=>d.split('.')[0]))).sort().reverse();
+
+  const ySel = $('#fYear');
+  ySel.innerHTML = '<option value="ALL">全部年度 All</option>' +
+    years.map(y=>`<option value="${y}">${y} 年度</option>`).join('');
+  if(years.indexOf(STATE.filters.year)<0) STATE.filters.year = 'ALL';
+  ySel.value = STATE.filters.year;
+  fillSessions();
+
+  const stList = Array.from(stations).sort((a,b)=>(+a)-(+b));
+  const stSel = $('#fStation');
+  stSel.innerHTML = '<option value="ALL">全部站次 All Stations</option>' +
+    stList.map(s=>`<option value="${s}">第 ${s} 站</option>`).join('');
+  if(stList.indexOf(STATE.filters.station)<0) STATE.filters.station = 'ALL';
+  stSel.value = STATE.filters.station;
+}
+
+function fillSessions(){
+  const y = STATE.filters.year;
+  const dates = new Set();
+  Object.keys(SCHEMA).forEach(k=> toRecords(k).forEach(r=>{
+    if(y==='ALL' || r.__year===y) dates.add(r.__date);
+  }));
+  const list = Array.from(dates).sort().reverse();
+  $('#fSession').innerHTML = '<option value="ALL">全部場次 All Sessions</option>' +
+    list.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');
+  if(list.indexOf(STATE.filters.session)<0) STATE.filters.session = 'ALL';
+  $('#fSession').value = STATE.filters.session;
+}
+
+function buildLinks(){
+  const box = $('#linklist');
+  const items = CONFIG.FORMS.filter(f=>f.url);
+  box.innerHTML = items.length
+    ? items.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}<span>↗</span></a>`).join('')
+    : '<a style="cursor:default;color:#6E7686">尚未設定表單連結<span>—</span></a>';
+}
+
+function render(){
+  destroyCharts();
+  if(STATE.view==='overview') renderOverview();
+  else renderSheet(STATE.view);
+  window.scrollTo(0,0);
+}
+
+function goto(view){
+  STATE.view = view;
+  $$('#nav button').forEach(b=> b.classList.toggle('active', b.dataset.view===view));
+  if(window.innerWidth<=980) $('#sidebar').classList.remove('open');
+  render();
+}
+
+/* CSV 匯出 */
+function download(name,text){
+  const blob = new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+const csvCell = v => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
+const csvRow  = a => a.map(csvCell).join(',');
+
+function exportItems(){
+  const {key,S} = window.__export || {}; if(!S) return;
+  const sc = SCHEMA[key];
+  const lines = [csvRow(['題號','題目','填答數','平均','同意率／正向率'].concat(sc.scale))];
+  S.stats.forEach(s=> lines.push(csvRow([s.col, s.text + (s.reverse?'（反向題）':''), s.n, r2(s.mean), pct(s.agree)].concat(s.dist))));
+  download(`${sc.formName}_逐題分析_${yearsLabel()}.csv`, lines.join('\n'));
+}
+
+function exportComments(){
+  const {key,S} = window.__export || {}; if(!S) return;
+  const lines = [csvRow(['考試日期','題項','填答者','站次','文字建議'])];
+  S.comments.forEach(c=> lines.push(csvRow([fmtDate(c.date), c.title, c.who, c.station, c.text])));
+  download(`${SCHEMA[key].formName}_文字建議_${yearsLabel()}.csv`, lines.join('\n'));
+}
+
+function bind(){
+  $('#nav').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-view]'); if(b) goto(b.dataset.view);
+  });
+  $('#main').addEventListener('click', async e=>{
+    const g = e.target.closest('[data-goto]'); if(g){ goto(g.dataset.goto); return; }
+    const a = e.target.closest('[data-act]'); if(!a) return;
+    if(a.dataset.act==='print') window.print();
+    if(a.dataset.act==='csv') exportItems();
+    if(a.dataset.act==='csvc') exportComments();
+    if(a.dataset.act==='refresh'){
+      $('#loader').classList.remove('hidden');
+      await loadData(true); buildFilters(); render();
+      $('#loader').classList.add('hidden');
+    }
+  });
+  $('#main').addEventListener('input', e=>{
+    if(e.target.matches('[data-search]')){
+      const q = e.target.value.trim().toLowerCase();
+      const box = $(`[data-cmtlist="${e.target.dataset.search}"]`); if(!box) return;
+      $$('.cmt',box).forEach(c=> c.classList.toggle('hidden',
+        q && c.dataset.text.toLowerCase().indexOf(q)<0));
+    }
+  });
+  $('#fYear').addEventListener('change', e=>{
+    STATE.filters.year = e.target.value; fillSessions(); render();
+  });
+  $('#fSession').addEventListener('change', e=>{ STATE.filters.session = e.target.value; render(); });
+  $('#fStation').addEventListener('change', e=>{ STATE.filters.station = e.target.value; render(); });
+  $('#menuToggle').addEventListener('click', ()=> $('#sidebar').classList.toggle('open'));
+}
+
+/* =========================================================
+   內建示範資料（匯入自 奇美OSCE測驗儀表板.xlsx，供未連線時預覽用）
+   設定 CONFIG.API_URL 後即會自動改用 Google 試算表的即時資料
+   ========================================================= */
+const DEMO_DATA = {"examiner":{"headers":["考試日期","考官姓名","站次","Q1","Q2","Q3","Q4","Q5","Q6","Q7","Q8","Q9","Q10"],"rows":[["111.1.11","鍾焜明",1,4,4,4,4,4,4,4,4,"",""],["111.1.11","江銘彥",2,5,4,5,5,5,5,5,5,"",""],["111.1.11","陳盟榮",3,4,4,4,4,4,4,4,4,"貼上結痂傷口圖示",""],["111.1.18","陳耄逵",1,4,4,4,4,4,4,4,4,"有無菌手套可用嗎?假人的牙齒很會響,下次可以備公用的聽診器嗎?","同上"],["111.1.18","鍾焜明",2,4,4,4,4,4,4,4,4,"",""],["111.1.18","王保山",3,4,4,4,4,3,5,5,5,"考生任務太多，建議刪除身體檢查的部分",""],["111.1.18","陳盟榮",4,4,4,4,4,4,4,4,4,"",""],["111.3.26","陳南丞",1,5,5,5,5,5,5,5,5,"",""],["111.3.26","許瀞文",2,4,4,4,4,5,5,5,5,"",""],["111.3.26","葉正發",3,3,3,3,4,4,4,4,4,"","電腦應朝向考生進來的門"],["111.3.26","張聖宗",4,5,5,5,5,5,5,5,5,"",""],["111.3.26","陳盟榮",5,4,4,4,4,4,4,4,4,"","未評計算總分"],["111.3.26","程信翰",6,4,5,5,4,4,4,5,5,"略難！但臨床上非常實際","很好"],["111.3.26","蘇英傑",7,5,5,5,5,5,5,5,5,"",""],["111.3.26","柯獻欽",8,4,4,5,4,4,5,5,5,"",""],["111.3.26","許瑋芸",9,5,4,5,5,5,5,5,5,"",""],["111.3.26","鄭詠澤",10,5,2,2,5,5,5,5,5,"1.評分項目不清楚，設定不良\n2.測驗項目與教學目標不符",""],["111.3.26","劉韋呈",11,4,4,4,4,4,5,5,5,"",""],["111.3.26","林俊宏",12,5,4,4,5,5,5,5,5,"確實考驗學生在詢問病史和判斷數據的能力",""],["111.4.07","鍾焜明",1,5,5,5,5,5,5,5,5,"",""],["111.4.07","陳郁涵",2,5,4,5,5,4,5,5,5,"題目任務較多，包含病史、解釋及衛教、時間比較不足，第4-6評分項目或可考慮合併簡化，檢驗資訊較多，建議不要有貧血的設定，考生比較不會混淆",""],["111.4.07","陳盟榮",3,4,4,4,4,4,4,4,4,"皮膚照片再被檢查皮膚時才出示",""],["111.10.07","鍾焜明",1,5,5,5,5,5,5,5,5,"",""],["111.10.07","陳盟榮",2,4,4,4,4,4,4,4,4,"",""],["111.10.07","賴欣瑜",3,4,4,4,4,4,4,4,4,"",""],["111.10.13","高佑銘",1,5,4,4,5,5,5,5,5,"",""],["111.10.13","鍾焜明",2,4,4,4,4,4,4,4,4,"",""],["111.10.13","楊翊群",3,4,3,4,4,2,5,5,4,"考題太長,測試重點可以再明確一點",""],["111.10.13","涂冠杰",4,4,4,4,4,4,4,4,4,"",""],["112.1.10","高佑銘",1,5,5,5,5,5,5,5,5,"",""],["112.1.10","鍾焜明",2,4,4,4,4,4,4,4,4,"",""],["112.1.10","林泱瀚",3,3,3,4,3,3,5,5,5,"評分項目的問診因題目設計無病史詢問部分，可考慮修改",""],["112.1.10","蘇靜君",4,4,4,5,4,4,5,5,5,"",""],["112.1.19","葉正發",1,3,3,3,3,3,4,4,4,"",""],["112.1.19","賴欣瑜",2,4,4,4,4,4,4,4,4,"",""],["112.1.19","張庭嘉",3,5,5,5,5,5,5,5,5,"焦痂圖片過大不好固定，可貼為頸後方便看(貼在衣服內可能考生會找不到，貼在頸後部仍有學生會漏看)","建議可修正考生動線"],["112.3.18","施志遠",1,5,5,5,5,5,5,5,5,"","有小點心會更好"],["112.3.18","江銘彥",2,5,4,4,4,5,5,5,5,"",""],["112.3.18","李璧伊",3,3,3,3,3,3,4,4,4,"對於BHI及腰圍異常，考生通常未主動提及亦未解釋正常數值",""],["112.3.18","李威杰",4,4,4,4,4,4,4,4,4,"對於考生應確實練習留置針技術，考試前應給予加強複習流程，整體熟練度不佳",""],["112.3.18","宋冠嶔",5,4,4,4,4,4,5,5,5,"劇本中有錯字，觸診時\"助緣\"應為\"肋緣\"，兩手\"為\"向中間移動，應是微",""],["112.3.18","陳盟榮",6,4,4,4,4,4,4,4,4,"",""],["112.3.18","劉建良",7,5,4,4,5,4,4,4,4,"",""],["112.3.18","邱愉心",8,3,3,4,3,4,5,5,5,"回饋第6.7題：題目設計給分項目是要學員知道TB的前提之下說出TB X光的變化，但大多學員僅提到肺炎及說出X光判讀不見得會說出TB再X光的變化。→學員X光判讀不足",""],["112.3.18","王麟燕",9,5,5,5,5,5,5,5,5,"",""],["112.3.18","賴志政",10,4,4,4,4,4,4,4,4,"可考慮抗生素治療的選項",""],["112.3.18","王桂棻",11,4,3,4,4,4,5,5,5,"評核項目可考慮加入洗手，這個題目下次可能不太適合出模擬考",""],["112.3.18","徐英倫",12,4,4,4,4,4,4,4,4,"建議提供資訊中, 不要提及前胎因子宮顛顯前症剖腹產,會無法評估考生詢問前胎併發病史",""],["112.3.21","高佑銘",1,5,5,4,5,5,5,5,5,"",""],["112.3.21","鍾焜明",2,5,5,5,5,5,5,5,5,"",""],["112.3.21","楊翊群",3,4,5,5,3,4,5,5,5,"",""],["112.3.21","涂冠杰",4,4,4,4,4,4,4,4,4,"",""],["112.3.28","鍾焜明",1,4,4,4,4,4,4,4,4,"",""],["112.3.28","賴欣瑜",2,4,4,4,4,4,4,4,4,"",""],["112.3.28","張庭嘉",3,4,5,5,5,5,5,5,5,"",""],["112.7.11","鍾焜明",1,5,5,5,5,5,5,5,5,"",""],["112.7.11","黃筠婷",2,5,5,5,5,5,5,5,5,"可以把小便灼熱、頻尿列入SP的回答句裡，但考題難度就降低了",""],["112.7.11","賴欣瑜",3,5,5,5,5,5,5,5,5,"",""],["112.7.20","廖得凱",1,4,4,4,4,5,3,4,5,"在前置物時擺設上可以更明顯(手套衣服眼鏡)",""],["112.7.20","鍾焜明",2,5,5,5,5,5,5,5,5,"",""],["112.7.20","賴欣瑜",3,4,4,4,4,4,4,4,4,"",""],["112.7.20","陳盟榮",4,4,4,4,4,4,4,4,4,"",""],["112.10.17","廖得凱",1,4,4,4,4,4,5,4,5,"",""],["112.10.17","黃筠婷",2,5,5,5,5,5,5,5,5,"07.普遍問不到或大部分問了氣喘是否確診過，若要增加此題答題率，要多加氣喘嗎?",""],["112.10.17","王保山",3,4,4,3,4,3,4,4,5,"1.身體檢查佔評分比率稍低(只評聽診、複診、觸診，扣診沒評)\n2.測驗時間不足(若身體檢查花較多時間)",""],["112.10.17","鍾焜明",4,5,5,5,5,5,5,5,5,"",""],["112.10.24","鍾焜明",1,5,5,5,5,5,5,5,5,"",""],["112.10.24","黃筠婷",2,5,5,5,5,5,5,5,5,"",""],["112.10.24","張彤",3,4,4,2,4,4,4,4,4,"ESCHAR圖片不清楚，應由SP拿出大圖",""],["113.01.16","鍾焜明",1,5,5,5,5,5,5,5,5,"",""],["113.01.16","陳盟榮",2,4,4,4,4,4,4,4,4,"",""],["113.01.16","賴欣瑜",3,4,4,4,4,4,4,4,4,"",""],["113.01.20","曾文歆",1,5,5,5,5,5,5,5,5,"",""],["113.01.20","王淑慎",2,5,5,5,5,5,5,5,5,"1.\"考場指引\"的題目是否改為右腰疼痛                                               2. 相關檢查報告的P98是否改為和心臟約每分鐘110下一樣的數字",""],["113.01.20","楊翼寧",3,4,4,5,4,5,5,5,5,"題目上寫\"沒有特別過去病史\"會讓考生誤會部分病史不須詢問，可考慮刪除",""],["113.01.20","張純誠",4,5,5,5,5,5,5,5,5,"安妮的舌頭太硬，用壓舌板難以下壓舌頭，露出適當之咽喉部位，是否可以選用舌頭較軟易用壓舌板下壓之安妮，隔離衣相對小件，可能要準備不同大小的衣物","請成管同仁[進行口罩密合度(定性)教學"],["113.01.20","陳思伃",5,4,4,5,4,5,5,5,5,"1.衛教部分，可提示考生衛教內容提供具體事例                           2.checklist 03，口服福善美服用方式，建議(3)確定藥物完全吞下較為細節瑣碎，考生難完全做到                                                  3.題目頗難，與SP討論給予部分提示",""],["113.01.20","陳漢坤",6,5,4,5,5,5,5,5,5,"考題中寫只需PE，但在評分表寫CICARE又考核，考生要對病人有治療建議，容易讓考生掉分",""],["113.01.20","王立楷",7,5,4,5,5,5,5,5,5,"評量表:09前插入跳頁",""],["113.01.20","陳俊宇",8,5,5,5,5,5,5,5,5,"",""],["113.01.20","謝昆霖",9,4,4,4,4,4,4,5,5,"可先設定腹部PE是否需掀衣操作，若需要可在教案上標示，且告知SP",""],["113.01.20","蔣俊彥",10,4,2,2,4,4,4,4,4,"關於checklist胸痛11題過敏史及衛教15題，很多考生都會忘記問，我也覺得不需要，至於疼痛治療在該題目很難要學生回答，因為該題是胸痛及鑑別診斷",""],["113.01.20","蘇家震",11,5,5,5,5,5,5,5,5,"基本無菌觀念都有，很適合學生練習，協助人員在考前須知道如何幫學生穿無菌衣","場地和協助人員都不錯"],["113.01.20","關哲彥",12,4,4,4,4,4,4,4,4,"",""],["113.01.27","陳照坤",1,5,5,5,5,5,5,5,5,"",""],["113.01.27","賴欣瑜",2,5,4,5,4,4,5,5,5,"可加上「給予病人適當衛教」",""],["113.01.27","江銘彥",3,5,4,5,5,5,5,5,5,"",""],["113.01.27","林昱惠",4,5,5,5,5,5,5,5,5,"喉頭採檢需參考臨床現況，採檢棒為刷子",""],["113.01.27","陳盟榮",5,4,4,4,4,4,4,4,4,"注意表格排列，10變成兩個空格",""],["113.01.27","黃建元",6,5,5,5,5,5,5,5,5,"可加入心血管鑑別診斷，右上腹合併後背痛，心臟之血管問題無法完全排除",""],["113.01.27","吳宗穆",7,4,5,5,5,5,5,5,5,"",""],["113.01.27","陳毓劭",8,4,4,5,4,4,2,3,4,"",""],["113.01.27","廖得凱",9,4,4,4,5,5,4,5,5,"",""],["113.01.27","葉子洪",10,4,4,3,4,5,5,5,5,"1.評分定義可以更明確，如02 a發作方式是指什麼內容，與誘發因子是否重複  2.05、06的伴隨症狀是指什麼  3.教案中沒有提到是否有食物、藥物過敏  3.考場指引中沒有要求考生要做疾病衛教",""],["113.01.27","高佑銘",11,5,5,5,5,5,5,5,5,"洗手是否有分乾或濕的問題",""],["113.01.27","洪雅珊",12,5,5,5,5,5,5,5,5,"",""],["113.03.09","林昱惠",1,5,5,5,5,5,5,5,5,"建議ECG機器換新，符合現狀",""],["113.03.09","蘇昱仲",2,4,4,4,4,4,4,4,4,"","提高鐘點費"],["113.03.09","張聖宗",3,5,5,5,5,5,5,5,5,"",""],["113.03.09","張彤",4,5,5,4,2,2,5,5,5,"假人的細緻度(鼻孔位置)及順暢度須加強",""],["113.03.09","胡恭寧",5,5,5,5,5,3,5,5,5,"",""],["113.03.09","許向平",6,4,4,4,4,4,4,4,4,"",""],["113.03.16","林永章",1,3,3,4,4,5,5,5,5,"考生指引提及不須病史詢問，可是評分表第2題要求詢問藥物史",""],["113.03.16","蔡宜璇",2,4,4,4,4,4,4,4,4,"",""],["113.03.16","黃恒慶",3,4,4,4,4,4,4,4,4,"建議CXR和痰檢結果應在整個考試過程有明確的出現時間序及出現時間點","考場診間空間較小，若不需要用到檢查床是否可以考慮暫時移開"],["113.03.16","蔣士仁",4,5,5,5,5,5,5,5,5,"",""],["113.03.16","張圖軒",5,5,4,5,5,5,5,5,5,"1.checklist 05-2搬到1F房子住，相當不合乎人情，考生也均未提到，建議刪除                                                                              2.建議考題標註不要衛教",""],["113.03.16","周昀",6,4,4,4,4,4,4,4,4,"難易適中，時間合宜，測驗內容明確","鈴聲太大聲，考生會嚇到或聽不到SP回應"],["113.03.16","高元",7,"","","","","","","","","1.本題應該朝急性\"發炎\"而不是\"感染\"來說明                               2.可能處置方式可以增加內科處置(打抗生素)選項，而不是只有手術處置，但附加可能內科治療失敗要手術或外科評估是否手術等選項",""],["113.03.16","廖建滕",8,5,5,5,5,5,5,5,5,"",""],["113.03.16","黃偉輔",9,4,4,4,4,4,4,4,4,"",""],["113.03.16","王鈺霖",10,5,5,5,5,5,5,5,5,"",""],["113.03.16","陳南丞",11,5,5,5,5,5,5,5,5,"",""],["113.03.16","甘偉志",12,5,5,5,5,4,5,5,5,"有些考生\"不熟悉\"導尿包中的配件，考試時會到處找尋(如7號手套，jelly)是否在指引中稍微說明一下",""],["113.04.16","黃柏諺",1,5,5,5,5,5,5,5,5,"一般過去經驗須戴無菌手套",""],["113.04.16","賴欣瑜",2,4,4,4,4,4,4,4,4,"",""],["113.04.16","陳盟榮",3,4,4,4,4,4,4,4,4,"",""],["113.04.16","鍾焜明",4,4,4,4,4,4,4,4,4,"",""],["113.04.18","鍾焜明",1,5,5,5,5,5,5,5,5,"",""],["113.04.18","陳盟榮",2,4,4,4,4,4,4,4,4,"",""],["113.04.18","劉晉瑋",3,4,4,4,4,4,4,4,4,"皮膚病灶處不明顯，職業部分不用附在題目裡",""],["113.07.18","高佑銘",1,5,5,5,5,5,5,5,5,"",""],["113.07.18","葉正發",2,4,4,4,4,4,4,4,4,"評分項目太多項",""],["113.07.18","楊翊群",3,4,5,4,4,3,3,5,5,"",""],["113.07.18","郭妍伶",4,5,5,5,5,4,4,5,5,"",""],["113.07.23","劉晉瑋",1,5,4,4,5,5,5,5,5,"後面的衛教及食道癌治療可能不好approach到","可更新題目"],["113.07.23","陳盟榮",2,"","","","","","","","","",""],["113.07.23","賴欣瑜",3,4,4,4,4,4,4,4,4,"",""],["113.10.22","鍾焜明",1,4,4,4,4,4,4,4,4,"",""],["113.10.22","陳盟榮",2,"","","","","","","","","",""],["113.10.22","林湙宸",3,4,2,4,5,4,5,5,5,"對於發燒項目評分應更多方面，而非單項",""],["113.10.29","温家鳴",1,4,4,4,4,4,5,5,5,"手套準備之品質，cover防護衣袖口",""],["113.10.29","鍾焜明",2,4,4,4,4,4,4,4,4,"",""],["113.10.29","賴欣瑜",3,4,4,4,4,4,4,4,4,"",""],["113.10.29","陳盟榮",4,4,4,4,4,4,4,4,4,"",""],["113.11.16","邱愉心",1,5,5,5,5,5,5,5,5,"",""],["113.11.16","陳盟榮",2,5,5,5,5,5,5,5,5,"",""],["113.11.16","陳怡婷",3,5,4,4,5,5,4,4,5,"評分內容涉及哪幾種問的內容或藥物治療項目可給予項目可以更明確","有幾位學生坐到跟診人員位置問診，不曉得是標示不清還是學生狀況外"],["113.11.16","劉韋呈",4,4,4,4,4,4,5,5,5,"",""],["113.11.16","陳殿和",5,5,5,5,5,5,4,5,5,"乾洗手要放在備物","鈴聲太大聲"],["113.11.16","張明閎",6,4,4,5,4,4,5,4,4,"項目在LQQOPERA建議依順序(1~4，8~10)","學生入場動向可優化"],["114.1.14","周瑛喬",1,4,3,4,4,4,4,5,5,"1.外科口罩及防護衣評分較不易，全部考生都有帶口罩，且會不好意思請護理人員協助\n2.無菌手套OR一般手套穿帶時機\n3.是否考RSI、藥物、IV/O2/Mornitor等)",""],["114.1.14","鍾焜明",2,5,5,5,5,5,5,5,5,"",""],["114.1.14","楊翊群",3,4,4,4,4,4,4,4,4,"",""],["114.1.14","陳盟榮",4,4,4,4,4,4,4,4,4,"",""],["114.1.21","鍾焜明",1,5,5,5,5,5,5,5,5,"",""],["114.1.21","陳盟榮",2,4,4,4,4,4,4,4,4,"",""],["114.1.21","劉晉瑋",3,5,5,5,5,5,5,5,5,"",""],["114.2.15","鍾啟榮",1,4,4,4,4,4,4,4,4,"",""],["114.2.15","簡嘉威",2,4,3,4,4,4,4,4,4,"",""],["114.2.15","吳鴻昌",3,4,4,4,4,4,4,4,4,"",""],["114.2.15","陳思伃",4,5,4,5,5,5,5,5,5,"1.手套準備XL號數, 檢體何宇臨床使用流感口咽檢體盒不一致\n2.評估採檢動作正確(非慣用時比登壓舌板, 慣用手採集), 較難評估採檢染污 - 評分項目8",""],["114.2.15","李璧伊",5,3,4,4,4,5,5,5,5,"",""],["114.2.15","高佑銘",6,5,5,5,5,5,5,4,5,"",""],["114.2.15","王桂棻",7,4,3,4,4,4,4,4,4,"",""],["114.2.15","王麟燕",8,5,5,5,5,5,5,5,5,"",""],["114.2.15","鄭詠澤",9,5,5,5,5,5,5,5,5,"此題宜事先讓標準化病人知道有PE",""],["114.2.15","陳盟榮",10,4,4,4,4,4,4,4,4,"",""],["114.2.15","謝昆霖",11,4,3,4,4,4,4,5,5,"是否用自己口罩或另戴外科口罩可說明(現在考生進場都已經有口罩)",""],["114.2.15","關哲彥",12,5,5,5,5,5,5,5,5,"",""],["114.3.22","陳盟榮",1,4,4,4,4,4,4,4,4,"",""],["114.3.22","高佑銘",2,4,4,4,4,4,4,4,4,"",""],["114.3.22","譚弘熙",3,5,5,5,5,5,5,5,5,"題目可寫:先做理學檢查、再判讀x光，避免考生一進門就只想看x光","不知考場能否加裝圍簾或屏風供考生使用(注意病人隱私部分)"],["114.3.22","張純誠",4,5,5,5,5,5,5,5,5,"",""],["114.3.22","張榮哲",5,5,4,4,5,5,5,4,4,"可多評量:飲食的關聯(火龍果、含血食物、鐵劑) \n女性生理期的關聯",""],["114.3.22","王麟玉",6,5,5,5,5,5,5,5,5,"",""],["114.3.22","鄭鴻翔",7,5,5,5,5,5,5,5,5,"題目教案沒有附x光",""],["114.3.22","陳怡婷",8,5,4,4,5,5,5,5,5,"",""],["114.3.22","黃筠婷",9,4,4,4,4,4,4,4,4,"",""],["114.3.22","盧翰生",10,5,5,5,5,5,5,5,5,"鼻胃管測量,許多學員是: 耳鼻-耳-劍突\"",""],["114.3.22","黃柏穎",11,5,5,4,5,5,5,5,5,"",""],["114.3.22","江銘彥",12,5,5,5,5,4,5,5,5,"",""],["114.4.16","葉正發",1,3,3,3,3,3,3,3,3,"",""],["114.4.16","吳聰佑",2,5,5,5,5,5,5,5,5,"",""],["114.4.16","劉晉瑋",3,4,4,4,4,4,4,4,4,"",""],["114.7.8","高佑銘",1,5,5,5,5,5,5,5,5,"",""],["114.7.8","葉正發",2,4,4,4,4,4,4,4,4,"",""],["114.7.8","劉晉瑋",3,5,5,5,5,5,5,5,5,"",""],["114.7.8","涂冠杰",4,4,4,4,4,4,4,4,4,"","考題難易適當"],["114.7.23","葉正發",1,3,3,3,3,4,4,4,4,"",""],["114.7.23","王淑慎",2,4,4,4,4,4,4,4,4,"",""],["114.7.23","劉晉瑋",3,5,5,5,5,5,5,5,5,"",""],["115.1.24","曾冠叡",1,5,5,5,5,5,5,5,5,"抽動脈血評分項目可增加接觸病人後洗手",""],["115.1.24","劉晉瑋",1,5,5,5,5,5,4,5,5,"GOOD","持續保持"],["115.1.24","黃恒慶",2,4,4,4,4,4,4,4,5,"",""],["115.1.24","楊翊群",2,5,5,5,5,5,5,5,5,"SP需前的瘀青可以畫大一點",""],["115.1.24","黃筠婷",3,5,5,5,5,4,4,4,4,"考生們上指引可多寫治療與預防,評分表病情解釋&臨床處置可以打勾",""],["115.1.24","江銘彥",3,5,5,4,5,5,5,5,5,"評分項目包含鑑別診斷及治療衛教,考試指引應清楚說明考生任務包含這些項目",""],["115.1.24","譚弘熙",4,5,5,5,5,5,5,5,5,"可考慮將包紮傷口或衛教列入評分,再減少一些丟垃圾的評分",""],["115.1.24","洪綸吾",4,5,5,5,5,5,5,5,5,"可提前告知學員有高機率做不完需做時間的分配","兩種縫合線的量及擺放位置建議一致"],["115.1.24","張庭嘉",5,5,5,5,5,5,5,5,5,"順序(脫下)如何部分給分有困擾(要馬全隊要馬順序全錯)",""],["115.1.24","李季恆",5,5,4,4,4,4,4,4,4,"回饋可加長時間",""],["115.1.24","吳聰佑",6,4,4,4,4,4,4,4,4,"","很棒!可以評估學生是否再臨床有無收穫,可加強設計三高相關"],["115.1.24","徐英倫",6,4,4,4,4,4,4,4,4,"建議資訊上不要寫陰道鏡，改為陰道內診。(針對腹痛出血的病人應較不常直接安排陰道鏡檢查)",""],["115.3.21","林毅",1,5,4,4,4,4,5,5,5,"測驗項目是病史詢問及病情解釋,但是評分項目有要求考生針對治療的衛教,再考題說銘可以更清楚提到須有治療的衛教,不然一般初診階段確實不太會主動提",""],["115.3.28","陳季杏",1,5,4,5,4,5,5,5,5,"這題材考生需要有讀書才會的題目,可看出考生平時對臨床知識是否用心,滿多人提出ACHALASIA這鑑別診斷,但少人提出食道癌這診斷,沒人提及醃製食物、吃燙食物、吐血這些症狀，幾乎沒人可以提出治療方式及預防","可以多一個噁心嘔吐的症狀評估,幾乎都沒講到預後後續計畫，是否題目該修正?"],["115.3.21","許向平",2,4,4,4,4,4,4,4,4,"",""],["115.3.28","曾文歆",2,5,5,5,5,5,5,5,5,"",""],["115.3.21","葉敬淳",3,4,4,4,4,3,4,5,5,"","主辦單位可以提供簡單茶點"],["115.3.28","葉敬淳",3,4,4,4,4,4,4,4,4,"",""],["115.3.21","李茂庭",4,5,5,5,5,5,5,5,5,"與臨床情境相符,具有鑑別度","運作良好"],["115.3.28","邱愉心",4,4,4,4,4,4,4,4,4,"","旅遊史:學員大多Focus在國外(大陸),較少問到國內旅遊使(登山戶外等),tocc不確實,只詢問部分不完整! 不明熱PE大多FOCUS再LUNG的部分，較少觀察皮膚四肢關節淋巴結等狀況"],["115.3.21","葉子洪",5,5,5,5,5,5,5,5,5,"本題第七項,考生不會直接以專業的疾病名稱來問病人,最多只會問有沒有氣喘或肺部疾病",""],["115.3.28","張明閎",5,4,4,4,4,4,4,4,4,"任務比重不均,有三個任務,問病史詢問佔10題,但病解與檢查解說只各佔一題,核對表建議加入TOCC",""],["115.3.21","王麟玉",6,4,4,4,4,4,5,5,5,"內容及難度合宜",""],["115.3.28","王麟燕",6,4,4,4,4,4,4,4,4,"",""],["115.3.21","陳盟榮",7,4,4,4,4,4,4,4,4,"",""],["115.3.28","簡嘉威",7,4,4,4,4,4,4,4,4,"1.年齡易使考生露問懷孕及生產史，生理期也會漏問\n2.藥物服用時機及副作用大部分人都不會答\n3.部分考生看到LAB DATA就少問很多病史",""],["115.3.21","温仁育",8,4,4,4,4,4,4,4,4,"可將已知驗孕陽性的資訊提前放再背景資訊中,因為SP何時透露懷孕結果的時間點會明顯影響考生表現,太早得知和太晚得知病人有孕的學員,表現有顯著落差! 可能會不公平","GOOD JOB"],["115.3.28","吳聰佑",8,4,4,5,5,5,5,5,5,"可以把SP一開始說明有懷孕的這部份不用先講,可引導考生考慮懷孕可能以免被帶走問診都著重懷孕而缺乏注意其他器官問題","很實用且符合臨床狀況"],["115.3.21","莊閔翔",9,4,4,4,4,4,4,4,4,"",""],["115.3.28","林才揚",9,5,5,5,5,5,5,5,5,"可以在膀胱內加入生理食鹽水，會更加有真實感",""],["115.3.21","陳奕嘉",10,5,5,5,5,5,5,5,5,"非常適合UGY有些學員仍不太熟悉,十分有鑑別度","很好"],["115.3.28","王品貽",10,5,5,5,5,5,5,5,5,"放置前需檢查病人鼻孔","考試前須確認模具有無異常"],["115.3.21","高佑銘",11,5,2,3,5,5,5,5,5,"考題評分內容需在討論",""],["115.3.28","劉韋呈",11,5,4,4,5,5,5,5,5,"評分項目檢查氣囊與檢查氣管內管的CUFF是否完整,評分項目有重複",""],["115.3.21","蔣俊彥",12,4,4,4,4,4,4,4,4,"關於靜脈留置針，在我們醫院醫學生並沒有在臨床實際操作,建議以ALINE或者動脈血為主,比較實用!","學生不熟悉靜脈留置針,要有機會可以練習,假人點滴顏色太淺,考生不易判斷是否回血"],["115.3.28","揚勝翔",12,5,5,5,5,5,5,5,5,"一些無菌操作細節較不容易評到",""],["115.4.11","蘇昱仲",1,4,4,4,5,5,4,4,4,"","冷氣壞掉"],["115.4.11","黃恒慶",2,4,4,4,4,4,4,4,4,"",""],["115.4.11","朱庭瑩",3,3,4,5,2,3,5,5,5,"PAOD相關的引導不足,考生都專注再做NE",""],["115.4.11","杜敬惟",4,4,4,5,5,5,5,5,5,"和雙下肢麻考題一起,使考生聯想",""],["115.4.11","林裕民",5,4,4,4,4,4,4,4,4,"",""],["115.4.11","楊尚儒",6,4,4,4,4,4,4,4,4,"",""]]},"sp":{"headers":["考試日期","SP姓名","站次","第一梯","第二梯","Q1","Q2","Q3","Q4","Q4.1","Q4.2","Q5","Q6","Q7"],"rows":[["111.1.11","杜清煌",1,"v","v",4,4,4,4,11,16,4,4,""],["111.1.11","黃淑玲",2,"v","v",5,5,5,5,11,11,5,5,""],["111.1.11","陳盈達",3,"v","v",5,5,5,5,"","",5,5,""],["111.1.18","王俊智",2,"v","v",5,5,5,5,"","",5,5,""],["111.1.18","蘇彥甫",3,"v","v",5,5,5,5,12,16,5,5,""],["111.1.18","洪長鶴",4,"v","v",5,5,5,5,12,"",5,5,""],["111.3.26","陳淑燕",2,"v","v",4,4,4,4,19,20,4,4,""],["111.3.26","鄭玲姝",3,"v","v",5,5,5,5,19,"",5,5,""],["111.3.26","陳盈達",5,"v","v",5,5,5,5,19,"",5,5,""],["111.3.26","陳碧媖",6,"v","v",5,5,5,5,19,"",5,5,""],["111.3.26","沈仁佑",8,"V","",4,5,5,5,10,"",5,5,""],["111.3.26","蕭佑任",8,"","V",5,4,4,4,9,8,5,5,""],["111.3.26","鄭安君",9,"V","V",5,5,5,5,19,"",5,5,""],["111.3.26","趙政球",10,"V","",4,4,4,4,10,12,4,4,""],["111.3.26","蘇承鴻",10,"","V",4,4,4,4,9,"",5,5,""],["111.3.26","洪韻棠",12,"V","V",5,5,5,5,19,"",5,5,""],["111.10.04","趙政球",1,"V","V",4,5,4,4,8,12,4,4,""],["111.10.04","吳權亮",2,"V","V",5,5,5,5,8,"",5,5,""],["111.10.04","馮凱芝",3,"V","V",5,5,5,5,8,"",5,5,""],["111.10.13","杜清煌",1,"V","V",5,5,5,5,12,20,5,5,""],["111.10.13","沈仁祐",2,"V","V",4,5,4,4,12,"",4,4,""],["111.10.13","王俊智",3,"V","V",5,5,5,5,12,"",5,5,""],["112.01.10","郭志鴻",2,"V","V",5,5,5,5,12,20,5,5,""],["112.01.10","張申朋",3,"V","V",5,5,5,5,11,"",5,5,""],["112.01.10","王俊智",4,"V","V",4,5,5,5,11,"",5,5,""],["112.1.19","趙政球",1,"V","V",5,5,5,5,9,12,5,5,""],["112.1.19","陳巧慧",2,"V","V",5,5,5,5,9,"",5,5,""],["112.1.19","林冠宏",3,"V","V",5,5,5,5,"","",5,5,""],["112.3.18","姜春美",2,"v","v",4,4,5,4,17,16,3,4,"中場休息10分鐘走回休息室上廁所有點趕"],["112.3.18","楊素璧",3,"v","v",5,5,5,5,17,18,5,5,""],["112.3.18","陳盈達",5,"v","v",5,5,5,5,18,"",5,5,""],["112.3.18","韓月環",6,"v","v",5,5,5,5,17,24,4,4,""],["112.3.18","沈昱瑾",8,"v","v",5,5,5,5,17,"",5,5,""],["112.3.18","黃淑玲",9,"v","",5,5,5,5,9,9,5,5,""],["112.3.18","蔡怡華",9,"","v",4,4,5,4,9,"",4,3,""],["112.3.18","蘇承鴻",10,"v","v",4,4,5,4,17,"",4,4,""],["112.3.18","王小燕",12,"v","v",5,5,5,5,17,"",5,5,""],["112.3.21","王俊智",2,"v","v",5,5,5,5,7,"",5,5,""],["112.3.21","蘇彥甫",3,"v","v",5,5,5,5,7,24,5,5,""],["112.3.21","陳盈達",4,"v","v",5,5,5,5,7,"",5,5,""],["112.3.28","陳盈達",1,"v","v",5,5,5,5,8,"",5,5,""],["112.3.28","黃淑玲",2,"v","v",5,5,5,5,9,9,5,5,""],["112.3.28","張申朋",3,"v","v",5,5,4,5,8,"",5,5,""],["112.7.11","陳盈達",1,"v","v",5,5,5,5,10,"",5,5,""],["112.7.11","黃淑玲",2,"v","v",5,5,5,5,10,10,5,5,""],["112.7.11","張申朋",3,"v","v",5,5,5,5,10,"",5,5,"換場時間可以減少"],["112.7.20","洪長鶴",2,"v","v",5,5,5,5,8,12,5,5,""],["112.7.20","蘇彥輔",3,"v","v",5,5,5,5,6,10,5,5,""],["112.7.20","杜清煌",4,"v","v",5,5,5,5,"",16,5,5,""],["112.10.17","洪長鶴",2,"v","v",5,5,5,5,8,16,5,5,""],["112.10.17","陳盈達",3,"v","v",5,5,5,5,8,"",5,5,""],["112.10.17","杜清煌",4,"v","v",5,5,5,5,8,"",5,5,""],["112.10.24","陳盈達",1,"v","v",5,5,5,5,11,"",5,5,""],["112.10.24","陳巧慧",2,"v","v",5,5,5,5,11,"",5,5,"劇本可再增加尿液顏色、刺痛感、頻尿、腹痛、灼熱感等，關於症狀的指示，疼痛指數的建議"],["112.10.24","杜清煌",3,"v","v",4,4,4,4,11,18,4,4,""],["113.01.16","趙政球",1,"","",4,5,5,5,9,12,5,5,""],["113.01.16","陳巧慧",2,"","","","","","","","","","",""],["113.01.16","杜清煌",3,"","",4,4,4,4,16,"",4,4,""],["113.01.20","洪韻棠",2,"v","",5,5,5,5,5,"",5,5,""],["113.01.20","莊珮雯",2,"","v",5,5,5,5,3,"",5,5,""],["113.01.20","陳盈達",3,"v","",5,5,5,5,4,"",5,5,""],["113.01.20","蘇敬善",3,"","v",5,5,5,5,4,"",5,5,""],["113.01.20","張鳳儀",5,"v","",4,5,5,5,8,"",5,5,""],["113.01.20","蘇承鴻",6,"v","",5,5,5,5,3,"",5,5,""],["113.01.20","姜文祥",6,"","v",4,5,4,5,5,"",5,5,""],["113.01.20","鄭慧卿",8,"v","",5,5,5,5,6,"",5,5,""],["113.01.20","何隨翠",8,"","v",5,5,5,5,"","",5,5,""],["113.01.20","林恩如",9,"v","",4,4,4,4,4,"",4,4,""],["113.01.20","黃琳喬",9,"","v",5,5,5,5,4,"",5,5,""],["113.01.20","洪長鶴",10,"v","",5,5,5,5,8,12,5,5,""],["113.01.20","鄭安君",12,"v","",5,5,5,5,"","",5,5,""],["113.01.20","賴麗君",12,"","v",5,5,5,5,1,"",5,5,""],["113.01.27","韓月環",2,"v","v",5,5,5,5,12,12,5,5,""],["113.01.27","陳盈達",3,"v","",5,5,5,5,6,"",5,5,""],["113.01.27","姜文祥",3,"","v",5,5,5,5,6,"",5,5,""],["113.01.27","張鳳儀",5,"v","v",5,5,5,5,12,"",5,5,""],["113.01.27","李亮",6,"v","v",5,5,5,5,12,"",5,5,""],["113.01.27","張榛芸",8,"v","",5,5,5,5,6,"",5,5,"考生進場就位的動線，稍微有點不合理，SP要坐到跟診護理師的位置(在電腦後面)，才不會擋到"],["113.01.27","張綺真",8,"","v",4,5,5,5,6,"",5,5,""],["113.01.27","鄭慧卿",9,"v","v",5,5,5,5,12,"",5,5,""],["113.01.27","吳豐吉",10,"v","",5,5,4,5,6,10,4,5,""],["113.01.27","蘇敬善",10,"","v",5,5,5,5,6,"",5,5,""],["113.01.27","黃淑玲",12,"","",5,5,5,5,12,12,5,5,""],["113.03.09","郭志鴻",6,"","",5,5,5,5,12,20,5,5,""],["113.03.16","周蝶生",1,"v","",4,3,3,4,10,"",4,4,""],["113.03.16","何金蘭",1,"","v",5,5,5,5,11,"",5,5,""],["113.03.16","林瓊好",2,"v","",5,5,5,5,10,20,5,5,""],["113.03.16","賴麗君",2,"","v",5,5,5,5,"","",5,5,""],["113.03.16","沈仁祐",3,"","",4,5,4,5,21,"",4,4,""],["113.03.16","沈昱瑾",4,"","",5,5,5,5,"","",5,5,""],["113.03.16","杜怡貞",5,"v","",5,5,5,5,10,"",5,5,""],["113.03.16","楊旻雀",5,"","v",5,5,5,5,11,"",5,5,""],["113.03.16","何隨翠",6,"","",5,5,5,5,21,"",5,5,""],["113.03.16","陳盈達",7,"v","",5,5,5,5,10,"",5,5,""],["113.03.16","李亮",7,"","v",5,5,5,5,11,"",5,5,""],["113.03.16","黃鈺涵",8,"v","",5,5,5,5,10,"",5,5,""],["113.03.16","鄭慧卿",8,"","v",5,5,5,5,12,"",5,5,""],["113.04.16","洪長鶴",2,"","",5,5,5,5,4,12,5,5,""],["113.04.16","陳盈達",3,"","",5,5,5,5,4,"",5,5,""],["113.04.16","鄧資嘉",4,"","","","","","","","","","",""],["113.04.18","陳盈達",1,"","",5,5,5,5,9,"",5,5,""],["113.04.18","陳巧慧",2,"","",5,5,5,5,9,"",5,5,""],["113.04.18","王俊智",3,"","",5,5,5,5,9,"",5,5,""],["113.07.18","洪長鶴",2,"","",5,5,5,5,4,12,5,5,""],["113.07.18","陳盈達",3,"","",5,5,5,5,4,"",5,5,""],["113.07.18","杜清煌",4,"","",4,4,4,4,4,12,4,4,""],["113.07.23","杜清煌",1,"","",4,4,4,4,9,18,4,4,""],["113.07.23","陳巧慧",2,"","",5,5,5,5,8,"",5,5,""],["113.07.23","陳盈達",3,"","",5,5,5,5,8,"",5,5,""],["113.10.22","陳盈達",1,"","",5,5,5,5,12,"",5,5,""],["113.10.22","陳巧慧",2,"","",5,5,5,5,12,"",5,5,""],["113.10.22","王俊智",3,"","",5,5,5,5,12,"",5,5,""],["113.10.29","洪長鶴",2,"","",5,5,5,5,8,12,5,5,""],["113.10.29","陳盈達",3,"","",5,5,5,5,8,"",5,5,""],["113.10.29","杜清煌",4,"","",4,4,4,4,8,16,4,4,""],["113.11.16","吳豐吉",2,"","",5,5,5,5,14,12,4,5,""],["113.11.16","黃淑玲",3,"v","",5,5,5,5,7,7,5,5,""],["113.11.16","蘇姵霜",3,"","v",5,5,5,5,7,7,5,5,""],["113.11.16","鄧資嘉",6,"","",5,5,5,5,13,"",5,5,""],["114.1.14","洪長鶴",2,"v","v",5,5,5,5,8,16,5,5,""],["114.1.14","陳盈達",3,"v","v",5,5,5,5,8,"",5,5,""],["114.1.14","郭志鴻",4,"v","v",5,5,5,5,8,20,5,5,""],["114.1.21","趙政球",1,"v","v",5,5,5,5,9,12,5,5,""],["114.1.21","陳巧慧",2,"v","v",5,5,5,5,9,"",5,5,""],["114.1.21","王俊智",3,"v","v",5,5,5,5,9,"",5,5,""],["114.2.15","楊旻雀",2,"v","v",5,5,5,5,10,12,5,5,""],["114.2.15","楊春子",3,"v","v",5,5,5,5,12,"",5,5,""],["114.2.15","馮麗芳",5,"v","v",5,5,5,5,10,12,5,5,""],["114.2.15","鄭惠銘",6,"v","v",5,5,5,5,10,"",5,5,"現場多為理學檢查操作，考生較少提問道劇本內容"],["114.2.15","鄭慧卿",8,"v","",5,5,5,5,6,"",5,5,""],["114.2.15","陳昭蓉",8,"","v",4,5,4,4,5,"",5,5,""],["114.2.15","馮凱芝",9,"v","v",4,4,4,5,10,"",4,5,"教案對sp的要求說明沒有很明確，沒有說sp要躺上去病床接受聽觸扣診之類，但考官後來說評分表上有這評分，所以考生要求倘上病床檢查時，SP需照做，劇本大綱第四點只有寫醫師要求進行肛門指診時，拿出附錄給考生以代肛門指診結果。"],["114.2.15","趙政球",10,"v","v",5,5,5,5,10,12,5,5,""],["114.2.15","洪韻棠",12,"v","",5,5,5,5,5,"",5,5,""],["114.2.15","李敏綺",12,"","v",4,4,4,4,5,"",4,4,""],["114.3.22","鄭玲姝",1,"v","",5,5,5,5,10,"",5,5,""],["114.3.22","何金蘭",1,"","v",5,5,5,5,10,"",5,5,""],["114.3.22","陳巧慧",2,"v","v",5,5,5,5,20,"",5,5,""],["114.3.22","沈仁祐",3,"v","",4,5,4,5,10,"",4,5,"1.7號考生不知道是太緊張還是其他原因? 總之對病人扣診檢查比其他人大力，有點痛\n 2.這次考試時間安排與之前稍微不同,但體感上覺得有節省到時間"],["114.3.22","賴冠翊",3,"","v",4,5,5,5,10,"",5,5,""],["114.3.22","陳盈達",4,"v","v",5,5,5,5,20,"",5,5,""],["114.3.22","周燕玲",5,"v","",4,4,4,4,10,"",4,4,""],["114.3.22","李敏綺",5,"","v",4,4,4,4,10,"",4,4,""],["114.3.22","黃淑玲",6,"v","",5,5,5,5,10,10,5,5,""],["114.3.22","陳昭蓉",6,"","v",4,4,4,5,10,"",4,5,""],["114.3.22","王俊智",7,"v","",5,5,5,5,10,"",5,5,""],["114.3.22","蘇承鴻",7,"","v",5,5,5,5,10,10,5,5,""],["114.3.22","黃婉婷",8,"v","",5,5,5,5,10,20,5,5,""],["114.3.22","顏旻萱",8,"","v",5,5,5,5,10,20,5,5,""],["114.4.16","趙政球",1,"v","v",4,5,4,4,9,12,5,5,""],["114.4.16","陳巧慧",2,"v","v",5,5,5,5,9,"",5,5,""],["114.4.16","王俊智",3,"v","v",5,5,5,5,9,"",5,5,""],["114.7.9","洪長鶴",2,"v","v",5,5,5,5,8,12,5,5,""],["114.7.9","陳盈達",3,"v","v",5,5,5,5,8,"",5,5,""],["114.7.9","郭志鴻",4,"v","v",5,5,5,5,8,20,5,5,""],["114.7.23","趙政球",1,"v","v",5,5,5,5,9,12,5,5,""],["114.7.23","陳巧慧",2,"v","v",5,5,5,5,9,"",5,5,""],["114.7.23","杜清煌",3,"v","v",4,4,4,4,9,16,4,4,""],["115.1.24","陳巧慧",1,"v","v",4,4,4,4,10,"",4,4,""],["115.1.24","李敏綺",2,"v","v",5,5,5,5,16,"",5,5,""],["115.1.24","鄭慧卿",3,"v","v",5,5,5,5,15,"",5,5,""],["115.1.24","王俊智",4,"v","v",5,5,5,5,16,18,5,5,""],["115.1.24","鄭惠銘",5,"v","v",5,5,5,5,15,"",5,5,""],["115.1.24","周燕玲",6,"v","v",4,4,4,4,15,"",4,4,"診間考生進入動線不恰當,病床阻礙顯狹窄,建議可更改動線"],["115.3.21","李敏綺",8,"v","v",4,4,4,4,18,"",4,4,""],["115.3.21","潘幗華",7,"v","v",5,5,4,4,19,"",5,5,""],["115.3.21","孫佩吟",6,"","v",5,5,5,5,10,"",5,5,""],["115.3.21","黃淑玲",6,"v","",4,4,4,4,10,10,4,4,""],["115.3.21","洪長鶴",5,"v","v",5,5,5,5,18,24,5,5,""],["115.3.21","王俊智",4,"v","v",5,5,5,5,19,"",5,5,""],["115.3.21","陳盈達",3,"v","v",5,5,5,5,19,"",5,5,""],["115.3.21","賴冠翊",2,"v","v",5,5,5,5,18,"",5,5,""],["115.3.21","李亮",1,"v","v",5,5,5,5,18,"",5,5,""],["115.3.28","趙政球",4,"v","v",5,5,5,5,18,24,5,4,""],["115.3.28","連期嫺",7,"","v",5,5,5,5,8,"",5,5,"我的訓練師巧慧姊很認真教導,也能與考官互相討論,以利給考生最正確一致性的考試,謝謝"],["115.3.28","鄭惠銘",3,"v","v",5,5,5,5,18,"",3,5,""],["115.3.28","陳巧慧",7,"v","",5,5,5,5,10,"",5,5,""],["115.3.28","沈仁祐",2,"v","",4,5,5,4,9,"",4,4,""],["115.3.28","黃彬愷",2,"","v",5,5,5,5,9,"",5,5,""],["115.3.28","蘇承鴻",5,"v","",5,5,5,5,9,"",5,5,""],["115.3.28","陳盈達",1,"v","v",5,5,5,5,18,"",5,5,""],["115.3.28","張乃文",5,"","v",5,5,5,5,9,"",5,5,""],["115.3.28","王方君",6,"","v",2,3,4,4,9,9,4,4,""],["115.3.28","顏旻萱",8,"v","v",5,5,5,5,18,"",5,5,""],["115.3.28","張榛芸",6,"v","",4,5,5,5,9,"",5,5,""],["115.4.11","陳盈達",2,"v","v",5,5,5,5,18,"",5,5,""],["115.4.11","趙政球",3,"v","v",5,5,5,5,18,20,5,5,""],["115.4.11","賴冠翊",4,"v","v",5,5,5,5,14,"",5,5,""],["115.4.11","姜文祥",5,"v","v",5,5,5,5,14,"",5,5,""],["115.4.11","王俊智",6,"v","v",5,5,5,5,14,"",5,5,""],["115.4.11","蕭佑任",1,"v","v",5,5,5,5,18,"",5,5,""]]},"student":{"headers":["考試日期","Q1","Q2","Q3","Q4","Q5","Q6","Q7","Q8","Q9","Q10","Q11","Q12"],"rows":[["111.1.11",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.11",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.11",5,5,5,5,5,5,5,5,5,1,"",""],["111.1.11",4,5,5,5,5,4,3,3,5,3,"",""],["111.1.11",5,5,5,5,5,5,5,5,5,3,"GOOD","GOOD"],["111.1.11",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.11",5,5,5,5,5,5,5,5,5,3,"GOOD","GOOD"],["111.1.11",4,4,5,4,5,4,5,5,5,3,"",""],["111.1.11",5,5,5,5,5,5,5,5,5,2,"","單獨回饋"],["111.1.11",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.11",5,5,5,5,5,5,5,5,5,3,"","謝謝老師與SP及工作人員，很用心準備OSCE考試"],["111.1.18",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.18",4,4,4,4,4,4,4,4,4,2,"",""],["111.1.18",5,5,5,5,5,5,5,5,5,3,"很棒~難易適中",""],["111.1.18",5,5,5,5,5,5,5,5,5,3,"難易度適中","安排良好"],["111.1.18",5,5,5,5,5,5,5,5,5,3,"第三站治療無法得知跟講述","收穫良多"],["111.1.18",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.18",4,4,4,4,4,3,4,4,4,3,"",""],["111.1.18",5,5,5,5,5,5,4,5,5,3,"",""],["111.1.18",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.18",5,5,5,5,5,5,5,5,5,3,"",""],["111.1.18",5,5,5,5,5,5,5,5,5,4,"",""],["111.1.18",4,4,4,4,4,4,4,4,4,3,"",""],["111.3.26",4,4,5,4,3,4,3,4,5,4,"","時間好短"],["111.3.26",5,5,5,5,5,5,5,5,5,4,"",""],["111.3.26",4,4,4,4,4,4,4,4,4,4,"",""],["111.3.26",4,5,5,5,5,5,5,4,5,4,"",""],["111.3.26",4,4,4,4,3,4,4,3,4,3,"",""],["111.3.26",4,4,4,4,4,4,4,4,4,3,"",""],["111.3.26",4,4,4,4,4,4,4,4,4,3,"",""],["111.3.26",5,4,5,5,4,5,5,5,5,3,"",""],["111.3.26",4,4,4,4,4,4,4,4,4,3,"",""],["111.3.26",5,5,5,5,5,5,5,5,5,3,"實用",""],["111.3.26",5,5,5,5,5,5,2,5,5,3,"",""],["111.3.26",4,5,5,4,4,4,1,4,5,3,"",""],["111.3.26",5,5,5,5,5,5,5,5,5,3,"",""],["111.3.26",4,4,4,4,4,4,4,4,4,5,"",""],["111.3.26",4,5,5,4,4,5,5,5,5,3,"",""],["111.3.26",5,5,5,5,5,5,5,5,5,3,"",""],["111.3.26",4,4,4,4,4,4,4,3,4,4,"",""],["111.3.26",4,4,4,4,4,4,4,4,4,4,"",""],["111.3.26",5,5,5,1,3,5,1,3,5,4,"謝謝","8分實在短"],["111.04.07",4,4,4,4,4,4,4,4,4,4,"",""],["111.04.07",4,4,4,4,4,4,4,4,4,3,"",""],["111.04.07",4,4,4,4,5,4,5,4,5,3,"",""],["111.04.07",5,5,5,4,5,5,4,4,4,3,"",""],["111.04.07",5,5,5,5,5,5,5,5,5,3,"",""],["111.04.07",5,5,5,4,5,4,4,5,5,3,"",""],["111.04.07",5,5,5,4,5,5,5,5,5,5,"",""],["111.04.07",4,5,5,5,4,4,5,4,5,3,"",""],["111.04.07",4,5,5,4,4,4,4,4,5,3,"",""],["111.04.07",5,5,5,5,5,5,5,5,5,3,"",""],["111.04.07",4,4,5,4,4,4,4,4,4,3,"",""],["111.10.04",5,5,5,5,5,5,5,5,5,3,"",""],["111.10.04",5,5,5,5,4,4,4,5,5,3,"理學檢查跟病史詢問在同一題容易問不完","完美"],["111.10.04",4,4,4,4,4,4,4,4,4,3,"",""],["111.10.04",4,4,4,4,4,4,4,4,4,3,"",""],["111.10.04",4,4,4,5,5,5,5,5,5,3,"",""],["111.10.04",4,4,4,4,5,4,5,5,5,3,"",""],["111.10.04",5,5,5,5,5,5,5,5,5,3,"",""],["111.10.04",5,5,5,5,5,5,5,5,5,3,"",""],["111.10.13",4,5,5,5,5,5,5,5,5,4,"",""],["111.10.13",5,5,5,5,5,5,5,5,5,4,"很棒","很棒"],["111.10.13",5,5,5,5,5,5,5,5,5,3,"GOOD",""],["111.10.13",4,4,5,5,4,4,5,4,5,3,"",""],["111.10.13",5,5,5,5,5,5,5,5,5,3,"GOOD","GOOD"],["111.10.13",5,5,5,5,5,5,5,5,5,5,"","謝謝老師與學長們的回饋"],["111.10.13",5,5,5,5,5,5,5,5,5,3,"","謝謝老師與學長們的回饋"],["111.10.13",4,5,4,5,5,4,5,4,5,3,"GOOD","GOOD"],["111.10.13",4,2,4,4,4,4,4,4,4,3,"第三站要求太多,做不完",""],["111.10.13",4,4,4,4,4,4,4,4,4,3,"實用",""],["111.10.13",5,5,5,5,5,5,5,5,5,3,"難易適中，臨床上應用實用",""],["111.10.13",5,5,5,5,5,5,5,5,5,3,"","很適合"],["112.1.10",4,4,4,4,4,4,4,4,4,3,"",""],["112.1.10",5,5,5,4,4,5,4,4,4,3,"","回饋很棒"],["112.1.10",5,5,5,5,5,4,5,5,5,3,"",""],["112.1.10",5,5,5,5,5,5,5,5,5,3,"難度剛好,反饋教學讓我們學到很多","感謝學長姐'的教學"],["112.1.10",4,5,5,4,4,5,4,4,5,3,"",""],["112.1.10",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.10",4,4,4,4,4,4,4,4,4,3,"",""],["112.1.10",4,5,5,4,4,4,4,4,4,3,"",""],["112.1.10",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.10",5,5,5,5,5,5,5,5,5,1,"",""],["112.1.19",5,5,5,4,4,5,4,4,5,3,"",""],["112.1.19",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.19",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.19",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.19",4,5,5,5,5,5,5,5,5,2,"",""],["112.1.19",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.19",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.19",5,5,5,5,5,5,5,5,5,3,"",""],["112.1.19",4,4,4,4,4,5,3,3,3,3,"",""],["112.3.18",5,5,5,5,5,5,5,5,5,3,"",""],["112.3.18",5,5,5,5,5,5,5,5,5,4,"",""],["112.3.18",5,5,5,5,5,5,5,4,5,4,"",""],["112.3.18",5,5,5,5,5,4,5,5,5,3,"",""],["112.3.18",5,5,5,5,5,5,5,5,5,3,"",""],["112.3.18",4,4,5,5,5,5,5,5,5,4,"",""],["112.3.18",5,5,5,5,5,5,5,5,5,4,"",""],["112.3.18",4,5,5,5,5,5,5,5,5,4,"",""],["112.3.18",5,5,5,5,5,5,5,5,5,4,"",""],["112.3.18",4,5,5,5,5,5,5,5,5,4,"",""],["112.3.18",4,4,4,4,4,4,4,4,4,3,"",""],["112.3.18",4,5,5,5,4,4,4,5,5,3,"",""],["112.3.18",5,5,5,5,5,5,5,5,5,3,"好難!","希望可以有更多回饋"],["112.3.18",5,5,5,5,5,4,5,4,5,3,"",""],["112.3.18",4,3,4,4,4,5,4,4,5,3,"","可以再每站安排簡短回饋讓我們了解何處要改進"],["112.3.18",4,4,4,4,4,4,4,4,4,4,"",""],["112.3.21",5,5,5,4,5,5,5,5,5,3,"",""],["112.3.21",4,5,5,5,5,5,5,5,5,3,"",""],["112.3.21",5,5,5,4,4,5,5,5,5,3,"",""],["112.3.21",4,5,5,3,4,5,4,4,5,3,"",""],["112.3.21",5,5,5,5,5,5,5,5,5,3,"",""],["112.3.21",5,5,5,4,5,4,4,5,5,3,"",""],["112.3.21",4,4,4,4,4,4,4,4,4,3,"",""],["112.3.28",4,4,4,4,4,4,4,4,4,3,"",""],["112.3.28",4,4,5,5,3,5,5,5,5,3,"",""],["112.3.28",4,5,5,5,5,5,5,5,5,3,"","可學習到基本HX TAKING , THANKS"],["112.3.28",4,4,3,4,4,3,4,4,4,3,"",""],["112.3.28",4,4,4,4,4,3,4,4,3,3,"",""],["112.3.28",5,5,5,5,5,5,5,5,5,3,"","題目合理實用"],["112.3.28",4,4,4,4,4,4,4,4,4,3,"","讓自己注意病史詢問熟悉度"],["112.3.28",4,4,4,4,4,4,4,4,4,3,"",""],["112.7.11",4,4,4,4,4,4,4,4,4,3,"用心,很OK",""],["112.7.11",4,4,4,4,4,4,4,4,4,3,"",""],["112.7.11",5,5,5,5,5,5,5,5,5,3,"GOOD!","GOOD!"],["112.7.11",4,5,4,5,4,5,4,5,4,3,"OK","用心"],["112.7.11",4,4,4,4,4,4,4,4,4,3,"",""],["112.7.11",4,5,5,5,5,4,5,5,5,3,"","GOOD!"],["112.7.11",5,5,5,5,5,5,5,5,5,3,"",""],["112.7.11",4,4,5,5,4,3,5,5,4,3,"","考試時會接到CALL,有點不曉得要怎麼辦"],["112.7.11",5,5,5,5,5,4,5,5,5,3,"老師回饋實用!",""],["112.7.11",5,5,5,5,5,5,5,5,5,3,"",""],["112.7.20",5,5,5,5,5,5,5,5,5,5,"",""],["112.7.20",4,5,5,5,4,4,5,4,4,3,"",""],["112.7.20",5,5,5,5,5,5,5,5,5,3,"",""],["112.7.20",5,4,5,5,5,4,5,5,5,3,"","各站老師於回饋階段都有仔細地提點"],["112.7.20",5,5,5,5,5,5,5,5,5,3,"","辛苦了"],["112.7.20",5,5,5,5,5,5,5,5,5,3,"",""],["112.10.17",4,5,5,5,5,5,5,5,5,3,"",""],["112.10.17",4,4,4,4,4,4,4,4,4,3,"",""],["112.10.17",4,4,4,4,4,4,4,4,4,3,"",""],["112.10.17",5,5,5,5,5,5,5,5,5,3,"難度適宜，可接受","收穫良多"],["112.10.17",5,5,5,5,5,5,5,5,5,3,"",""],["112.10.17",5,5,5,5,5,5,5,5,5,3,"",""],["112.10.17",5,5,5,5,5,5,5,5,5,3,"重複性問題較多","老師回饋詳細"],["112.10.17",4,4,4,4,4,4,4,4,4,3,"","安排很棒"],["112.10.24",5,4,4,4,5,5,4,4,4,3,"",""],["112.10.24",4,4,4,4,4,4,4,4,4,3,"",""],["112.10.24",4,4,4,4,4,3,4,4,4,3,"貼近臨床","很好"],["112.10.24",5,5,5,5,5,5,5,5,5,3,"",""],["112.10.24",5,5,5,5,5,5,5,5,5,5,"",""],["112.10.24",5,5,5,4,4,5,5,5,5,3,"",""],["112.10.24",5,5,5,5,5,5,5,5,5,3,"",""],["112.10.24",5,5,5,5,4,5,5,5,5,3,"",""],["112.10.24",5,5,5,5,5,5,5,5,5,3,"",""],["112.10.24",5,5,5,5,5,5,5,5,5,3,"",""],["112.10.24",4,5,5,5,5,4,5,5,5,3,"",""],["113.01.16",4,4,4,4,4,4,4,4,4,4,"",""],["113.01.16",4,5,5,5,4,5,5,5,5,3,"",""],["113.01.16",4,4,4,4,4,4,4,4,4,4,"",""],["113.01.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.16",4,4,4,4,4,4,4,4,4,3,"",""],["113.01.20",4,4,4,2,2,4,5,4,5,3,"考題內容多元",""],["113.01.20",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.20",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.20",4,5,5,4,5,5,4,5,5,3,"難度合宜","考官都會在結束後給feedback+teaching，很好的練習"],["113.01.20",4,4,4,4,4,4,4,4,4,3,"",""],["113.01.20",4,4,5,5,5,5,5,4,4,3,"1.Endo題可準備護目鏡，並說明是否需解釋操作   2.胸痛題，病人可以講少一些  3.下午的考官累了，有些東西明明有講，他卻說我沒講","很專業"],["113.01.20",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.20",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.27",5,4,4,4,4,5,5,5,5,3,"","鬧鐘設置有待加強"],["113.01.27",5,5,5,5,4,4,4,4,5,3,"","覺得可以多開一些OSCE加強班讓我們練習"],["113.01.27",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.27",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.27",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.27",5,5,5,5,5,5,5,5,5,3,"",""],["113.01.27",4,5,5,3,4,4,4,4,5,5,"",""],["113.01.27",4,5,5,4,5,5,4,5,5,3,"指示清晰易讀","回饋老師態度友善，收穫豐富"],["113.01.27",5,5,5,5,5,5,5,5,5,3,"臨床處置的部分可以具體標示\"治療\"及\"衛教\"",""],["113.01.27",5,5,5,5,5,5,5,5,5,4,"",""],["113.01.27",5,5,5,5,5,5,5,5,5,4,"","走進來不要越過PA"],["113.01.27",5,5,5,5,5,5,5,5,5,4,"",""],["113.03.09",4,3,5,2,4,2,3,5,5,5,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",4,5,5,5,4,5,5,5,4,5,"",""],["113.03.09",4,4,4,4,4,4,4,4,4,4,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"很棒，準備充分",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",3,2,5,4,4,4,4,4,3,4,"",""],["113.03.09",4,4,5,4,4,4,4,4,4,4,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",5,5,4,5,5,5,5,5,5,5,"",""],["113.03.09",5,4,4,5,5,5,4,4,5,5,"",""],["113.03.09",5,4,4,3,3,3,3,3,3,3,"尚可，腹部理學檢查標示不夠清楚，標示不夠清楚，未標示說要做問診",""],["113.03.09",4,4,4,4,4,4,5,5,5,5,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",4,4,4,4,4,3,3,4,4,4,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",5,5,5,5,5,5,5,5,5,5,"",""],["113.03.09",5,5,4,4,4,4,4,4,4,5,"",""],["113.03.09",4,4,4,4,4,4,4,5,4,4,"",""],["113.03.09",5,5,5,5,5,5,5,4,4,5,"",""],["113.03.16",5,5,5,3,5,4,5,5,5,"","",""],["113.03.16",4,5,5,5,4,5,5,5,5,3,"1.希望考前可以安排上課再練習一次     2.IV  set的 T-connect與平常練習的不一樣","希望考前可以安排上課再練習一次(Procedure、理學檢查)才能加深印象"],["113.03.16",4,4,4,4,3,4,4,4,4,4,"1.Foley的模具尿道口有點小，不好置入  2.T-Connect不太熟悉","希望可以針對測驗題目進行教學檢討，感謝"],["113.03.16",4,4,4,4,4,4,4,4,4,4,"",""],["113.03.16",4,4,4,4,4,4,4,4,4,4,"T-connect沒用過新的","時間合宜"],["113.03.16",3,3,3,3,3,3,3,3,3,4,"T-connect水打不進去",""],["113.03.16",4,5,5,3,3,5,4,4,5,4,"第三站有PE，解讀病解→有點太雜時間有點短",""],["113.03.16",4,5,5,5,3,4,4,4,5,4,"",""],["113.03.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.03.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.03.16",4,4,4,4,4,4,4,4,4,3,"","尿道模具尿道口太窄"],["113.03.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.03.16",5,5,5,5,5,5,5,5,5,4,"輸液order有點難","技能題擺放明確"],["113.03.16",5,4,3,4,4,5,4,4,5,2,"可以先打開radial  artery 的 pulse的開關嗎?考生不知可以要求開",""],["113.03.16",4,4,4,4,4,4,4,4,4,3,"",""],["113.03.16",5,5,5,5,5,5,5,5,5,3,"","讚!有鑑別"],["113.03.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.03.16",5,5,5,5,5,5,5,4,5,4,"","設備有點難用"],["113.03.16",5,5,5,5,5,5,5,5,5,4,"",""],["113.03.16",5,5,5,5,5,5,5,5,5,4,"",""],["113.03.16",5,5,5,5,5,5,5,5,5,4,"",""],["113.04.16",4,4,4,4,4,4,4,4,4,3,"","有點花時間，臨床事務繁忙時舉辦有點討厭"],["113.04.16",3,3,3,3,3,3,3,3,3,3,"",""],["113.04.16",5,5,5,5,5,5,5,5,5,3,"",""],["113.04.16",4,4,4,4,4,4,4,4,4,3,"",""],["113.04.18",4,4,4,4,4,4,4,4,4,4,"好難","教學詳細"],["113.04.18",5,5,5,5,5,5,5,5,5,4,"",""],["113.04.18",5,5,5,5,5,5,5,5,5,3,"",""],["113.04.18",2,2,2,2,2,2,2,2,2,3,"",""],["113.04.18",4,4,4,3,4,4,3,4,4,3,"",""],["113.04.18",4,4,5,5,5,5,4,4,5,3,"",""],["113.04.18",5,5,5,5,5,5,5,5,5,3,"",""],["113.04.18",5,5,5,5,5,5,5,5,5,3,"",""],["113.04.18",5,5,5,5,5,5,5,5,5,3,"",""],["113.07.18",4,4,4,4,4,4,4,4,4,3,"",""],["113.07.18",4,4,4,4,4,4,4,4,4,3,"",""],["113.07.18",5,5,5,4,5,4,5,4,5,3,"","題目實用"],["113.07.18",5,5,5,5,5,5,5,5,5,3,"",""],["113.07.23",4,4,4,4,4,4,4,4,4,3,"",""],["113.07.23",5,5,5,5,5,5,5,5,5,4,"",""],["113.07.23",5,5,5,5,5,5,5,5,5,3,"考題適當",""],["113.07.23",5,5,5,5,5,5,5,5,5,4,"",""],["113.07.23",5,5,5,5,5,4,5,5,5,3,"",""],["113.07.23",4,4,4,4,4,5,5,5,5,3,"",""],["113.07.23",3,4,4,4,3,3,4,3,4,3,"",""],["113.07.23",4,4,4,4,4,4,4,4,4,3,"",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"難易適中","可以回顧平日所學的問診與身體檢查技巧"],["113.10.22",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"難度適中",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.22",5,5,5,4,4,5,5,5,5,3,"",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.22",4,4,4,4,4,4,4,4,4,3,"",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"難度適中","時間長短合宜"],["113.10.22",4,5,5,5,5,5,5,5,5,3,"",""],["113.10.22",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.29",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.29",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.29",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.29",5,5,5,5,5,5,5,5,5,3,"",""],["113.10.29",4,4,5,5,4,4,4,5,5,3,"相當適切","頗有收穫"],["113.10.29",4,5,5,5,5,5,5,5,5,3,"","有臨場感"],["113.10.29",5,5,5,5,5,5,4,4,5,3,"",""],["113.10.29",4,4,4,4,4,4,4,4,4,3,"老師和教學中心都準備的很用心",""],["113.11.16",4,4,5,5,4,5,4,5,4,5,"",""],["113.11.16",4,5,5,4,5,3,4,4,4,3,"抽動脈血可先測試pulse摸不摸的到",""],["113.11.16",5,5,5,5,5,5,5,5,5,5,"",""],["113.11.16",4,4,4,4,4,4,4,4,4,4,"",""],["113.11.16",5,4,5,5,5,5,5,5,5,5,"",""],["113.11.16",5,5,5,5,5,5,5,5,5,5,"","希望婦產科老師可以現場直接溝通"],["113.11.16",5,5,5,5,5,5,5,5,5,5,"",""],["113.11.16",5,5,5,5,5,5,5,5,5,5,"",""],["113.11.16",4,4,4,4,4,4,4,4,4,4,"",""],["113.11.16",5,5,5,5,5,5,5,5,5,5,"",""],["113.11.16",5,5,5,5,5,5,5,5,5,5,"",""],["113.11.16",5,5,5,5,5,5,5,5,5,5,"",""],["113.11.16",4,4,4,4,4,4,4,4,4,4,"",""],["114.1.14",4,4,4,4,4,4,4,5,4,4,"",""],["114.1.14",4,4,4,4,4,4,4,4,4,3,"",""],["114.1.14",4,4,4,4,4,4,4,4,4,3,"","臨床電話可能影響作答時間"],["114.1.14",5,5,5,5,5,5,5,5,5,3,"考題設計精巧, 重點明確",""],["114.1.14",5,5,5,5,5,5,5,5,5,3,"","學習收穫良多"],["114.1.14",4,5,5,4,5,5,5,5,5,3,"",""],["114.1.14",5,5,5,5,5,5,5,5,5,3,"很有幫助","讚!"],["114.1.14",4,4,5,4,4,5,4,5,4,3,"",""],["114.1.21",5,4,4,4,4,4,4,4,4,3,"",""],["114.1.21",4,5,5,5,4,4,4,4,5,3,"",""],["114.1.21",5,5,4,4,4,4,5,5,4,3,"",""],["114.1.21",4,5,5,4,4,5,5,5,4,3,"",""],["114.1.21",5,5,5,4,5,4,4,5,5,3,"",""],["114.1.21",4,4,4,4,4,4,4,4,4,3,"",""],["114.1.21",4,4,4,3,4,3,3,4,5,3,"","時間短一點點"],["114.1.21",5,5,5,5,5,5,5,5,5,3,"很臨床應用方向,無建議",""],["114.1.21",5,5,5,5,5,5,5,5,5,3,"","謝謝老師和學長的回饋"],["114.2.15",5,5,5,5,5,5,5,5,5,3,"",""],["114.2.15",4,4,4,4,4,4,4,4,4,5,"",""],["114.2.15",4,4,4,4,4,4,4,4,4,3,"",""],["114.2.15",5,5,5,5,5,5,5,5,5,3,"",""],["114.2.15",5,5,5,5,5,4,5,5,5,3,"",""],["114.2.15",5,5,5,5,5,5,5,5,5,3,"",""],["114.2.15",4,4,4,3,3,4,3,3,4,4,"","多加練習"],["114.2.15",5,5,5,5,5,5,5,5,5,3,"",""],["114.2.15",5,5,5,5,5,5,5,5,5,3,"",""],["114.2.15",5,5,5,5,5,5,5,5,5,3,"","超棒! 很有用"],["114.3.22",5,5,5,5,5,5,5,5,5,3,"多辦一些","很讚"],["114.3.22",4,2,3,2,3,4,3,4,4,3,"",""],["114.3.22",5,4,4,4,5,4,4,5,4,4,"",""],["114.3.22",4,5,5,5,5,5,5,5,5,3,"",""],["114.3.22",5,5,4,4,5,4,5,5,4,3,"",""],["114.3.22",4,5,4,5,4,5,5,4,5,3,"",""],["114.3.22",4,4,3,3,3,3,3,3,4,4,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"","謝謝學長姊"],["114.3.22",5,5,5,5,3,4,5,5,4,4,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"",""],["114.3.22",4,5,5,4,4,5,5,5,5,4,"",""],["114.3.22",5,5,3,3,1,5,3,1,5,5,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"",""],["114.3.22",5,5,5,5,5,5,5,5,5,3,"胸部外傷比較不確定該如何檢查, 因為好像問不太出來是什麼原因",""],["114.3.22",5,5,4,3,4,4,3,4,5,3,"",""],["114.3.22",4,5,5,4,5,5,5,5,5,3,"",""],["114.4.16",5,5,5,5,5,5,5,5,5,4,"",""],["114.4.16",4,5,5,5,5,5,4,5,4,3,"","老師反饋認真"],["114.4.16",4,5,4,4,5,5,4,5,4,3,"難易適中","流程合理"],["114.4.16",5,5,5,5,5,5,5,5,5,3,"","回饋良好,謝謝學長們與老師"],["114.4.16",4,4,4,4,4,5,4,4,5,3,"",""],["114.4.16",5,5,5,5,5,5,5,5,5,3,"",""],["114.4.16",4,5,4,4,4,4,4,4,5,3,"",""],["114.4.16",5,5,5,5,5,5,5,5,5,3,"","老師們的回饋很有幫助"],["114.4.16",5,5,5,5,5,5,5,5,5,3,"","其實滿好玩的, 有點懷念"],["114.7.8",3,3,3,3,3,3,3,3,3,3,"",""],["114.7.8",5,5,5,5,5,5,5,5,5,3,"",""],["114.7.8",4,4,4,4,4,4,4,4,4,4,"跟Y1考試相比難度變高, 但性質類似",""],["114.7.8",4,5,5,4,3,3,4,3,4,3,"技能站引導不足",""],["114.7.8",4,4,4,4,5,5,5,4,4,4,"",""],["114.7.8",4,5,4,4,4,5,4,4,4,3,"",""],["114.7.8",4,4,4,5,5,4,5,4,5,3,"",""],["114.7.8",5,5,5,5,5,5,5,5,5,3,"",""],["114.7.23",4,4,5,4,4,5,4,4,5,3,"",""],["114.7.23",4,5,5,5,5,5,5,5,5,3,"",""],["114.7.23",5,5,5,5,5,5,5,5,5,3,"",""],["114.7.23",3,5,4,3,4,4,4,4,4,3,"",""],["114.7.23",3,4,4,3,4,4,4,4,4,3,"",""],["114.7.23",3,5,5,4,4,4,4,1,5,3,"",""],["114.7.23",2,4,4,4,4,4,4,4,4,4,"","有回饋,不錯"],["114.7.23",5,5,5,5,5,5,5,5,5,4,"非常實用",""],["114.7.23",5,5,5,5,4,5,5,5,5,4,"",""],["115.1.24",4,4,5,5,5,5,5,5,5,4,"","還需要多加練習"],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"整體非常好,學到非常多","GOOD"],["115.1.24",4,4,4,5,5,5,5,5,5,3,"",""],["115.1.24",4,4,4,4,4,4,4,4,4,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,4,5,5,5,5,5,5,5,4,"學到很多","希望回饋時間更長"],["115.1.24",4,3,3,4,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,4,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,4,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,1,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",4,4,4,4,4,4,4,4,4,3,"",""],["115.1.24",4,5,4,5,5,5,5,5,5,4,"多辦幾次我需要加強",""],["115.1.24",4,4,4,4,4,4,4,4,4,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,4,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",3,3,3,3,3,3,3,3,3,4,"",""],["115.1.24",4,4,4,4,4,4,4,4,4,4,"","謝謝考官/SP/工作人員,辛苦了"],["115.1.24",4,3,3,3,4,4,4,4,4,3,"",""],["115.1.24",4,4,4,4,4,4,4,4,4,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,4,"",""],["115.1.24",4,4,4,4,4,4,4,4,4,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"",""],["115.1.24",5,5,5,5,5,5,5,5,5,3,"讚","讚"],["115.3.21",5,5,5,5,5,5,5,5,5,3,"","清楚"],["115.3.21",5,5,5,5,5,5,5,5,5,3,"",""],["115.3.21",5,5,5,5,5,5,5,5,5,5,"讚","讚"],["115.3.21",4,4,4,4,4,4,4,4,4,3,"","謝謝老師"],["115.3.21",5,5,5,5,5,5,5,5,5,3,"",""],["115.3.21",5,5,5,5,5,5,5,5,5,4,"考題難度適中",""],["115.3.21",5,5,5,5,5,5,5,5,5,2,"有難度但很好",""],["115.3.21",4,4,4,4,4,4,4,4,4,2,"","希望能於平日舉行"],["115.3.21",3,3,3,3,3,2,3,3,3,3,"",""],["115.3.21",4,4,4,4,4,4,4,4,4,3,"",""],["115.3.21",5,5,5,5,5,5,5,5,5,3,"",""],["115.3.21",5,5,5,5,5,5,5,5,5,3,"","感謝教學部"],["115.3.21",5,5,5,5,5,5,5,5,5,3,"",""],["115.3.21",5,5,5,5,5,5,5,5,5,4,"",""],["115.3.21",5,5,5,5,4,4,5,5,5,4,"",""],["115.3.21",5,5,5,5,5,5,5,5,5,4,"",""],["115.3.21",5,5,5,5,5,5,5,5,5,3,"",""],["115.3.21",4,5,5,5,5,4,3,4,5,3,"技能題連續一起滿累的,可以錯開惠更好",""],["115.3.28",4,4,5,5,5,5,5,5,5,3,"",""],["115.3.28",5,5,5,5,5,5,5,5,5,5,"",""],["115.3.28",4,5,5,5,4,5,5,4,5,4,"",""],["115.3.28",4,4,4,4,4,4,4,4,4,4,"",""],["115.3.28",5,5,5,5,5,5,5,5,5,3,"",""],["115.3.28",4,4,5,4,4,4,4,4,4,3,"","希望對於問診題佳開課程,讓我們有更系統性的解題,非常需要"],["115.3.28",4,4,4,4,4,4,4,4,4,3,"",""],["115.3.28",5,5,5,5,5,5,5,5,5,3,"",""],["115.3.28",4,4,4,4,4,5,4,4,5,3,"",""],["115.3.28",4,4,4,4,4,4,4,4,4,3,"",""],["115.3.28",4,5,3,4,4,4,4,4,5,3,"",""],["115.3.28",4,5,4,5,4,5,4,4,5,3,"",""],["115.3.28",4,5,4,4,4,4,4,3,3,4,"",""],["115.3.28",5,5,4,5,4,5,4,4,5,3,"",""],["115.3.28",4,5,5,5,5,5,5,5,5,3,"",""],["115.3.28",4,5,4,5,4,5,4,5,5,4,"",""],["115.3.28",4,4,4,4,4,4,4,4,4,4,"",""],["115.4.11",4,5,4,5,4,4,5,4,5,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,4,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,4,"",""],["115.4.11",4,5,5,4,3,5,5,4,5,4,"",""],["115.4.11",5,5,5,4,4,5,5,5,5,5,"","收穫良多"],["115.4.11",2,5,5,5,4,5,5,5,5,4,"很好","棒"],["115.4.11",5,5,5,5,5,5,5,5,5,4,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"","建議平日舉辦OSCE"],["115.4.11",5,5,5,5,5,5,5,4,5,4,"",""],["115.4.11",3,4,4,5,5,5,5,5,5,4,"",""],["115.4.11",4,5,4,5,4,5,5,5,5,5,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,1,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",4,5,5,5,5,5,5,5,5,5,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",4,4,4,4,4,4,4,4,4,3,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,4,"",""],["115.4.11",4,3,4,3,4,3,4,3,4,4,"",""],["115.4.11",4,5,5,5,5,5,5,4,4,4,"",""],["115.4.11",4,4,4,4,4,4,4,5,4,4,"滿困難的,幸好有回饋","可以更多關"],["115.4.11",4,4,4,4,3,3,4,3,4,4,"",""],["115.4.11",4,5,4,5,4,5,4,4,4,4,"",""],["115.4.11",3,5,5,5,3,4,3,3,4,4,"",""],["115.4.11",5,5,5,5,5,5,5,5,5,3,"",""],["115.4.11",4,4,4,4,4,4,4,4,4,3,"",""],["115.4.11",4,5,5,5,5,4,5,5,5,3,"",""]]},"examinerSP":{"headers":["考試日期","考官姓名","標準化病人","Q1","Q2","Q3","Q4","Q5","Q6","Q7","Q8","總評語"],"rows":[["115.1.24","黃恒慶","鄭惠銘",4,1,1,4,4,2,1,4,""],["115.1.24","楊翊群","王俊智",5,1,1,5,5,1,1,5,"演出真實具一致性"],["115.1.24","黃筠婷","周燕玲",5,2,1,5,5,1,1,5,""],["115.1.24","江銘彥","陳巧慧",4,1,2,5,5,1,1,5,""],["115.1.24","江銘彥","孫佩吟",5,1,1,5,5,1,1,5,""],["115.1.24","徐英倫","鄭慧卿",4,3,3,4,4,1,1,2,"建議表現的疼痛要更劇烈更誇張，應避免中斷考生發生"],["115.3.21","林毅","",5,1,1,5,5,5,5,5,"一致性高"],["115.3.28","陳季杏","",5,1,1,5,5,5,5,4,"很好"],["115.3.28","曾文歆","",4,1,1,5,5,5,5,5,""],["115.3.21","許向平","",5,1,1,5,5,5,5,5,""],["115.3.21","葉敬淳","",4,2,2,4,4,4,4,4,""],["115.3.28","葉敬淳","",4,2,2,4,4,4,4,2,""],["115.3.21","李茂庭","",5,1,1,5,5,5,5,5,"SP表現穩定"],["115.3.28","邱愉心","",5,1,1,5,5,5,5,5,"表現佳,對劇本熟悉,會隨機應變"],["115.3.21","葉子洪","",5,1,1,5,5,5,5,5,""],["115.3.28","張明閎","",4,2,2,4,4,4,4,4,""],["115.3.28","張明閎","",4,2,1,4,4,4,4,4,"表現自然"],["115.3.21","王麟燕","",5,1,1,4,4,4,4,4,""],["115.3.21","王麟燕","",5,1,1,5,5,5,5,5,""],["115.3.28","王麟玉","",5,1,1,5,5,5,5,5,"自然的問答及符合腳色要求"],["115.3.28","王麟玉","",5,1,1,5,5,5,5,5,"表現合乎考題的需求"],["115.3.21","陳盟榮","",4,2,2,4,4,4,4,4,""],["115.3.28","簡嘉威","",5,1,1,4,4,4,5,5,""],["115.3.28","簡嘉威","",5,1,1,4,4,4,5,5,""],["115.3.28","吳聰佑","",5,2,2,4,4,4,5,5,""],["115.3.28","溫仁育","",5,1,1,3,4,2,4,5,"SP有適度的表情,肢體可以配合此題目再誇張一些,整體演出一致性嘉"],["115.4.11","蘇昱仲","",5,1,1,5,5,5,5,5,"表現良好,一致性高"],["115.4.11","楊尚儒","",5,1,1,5,5,5,5,5,""],["115.4.11","杜敬惟","",5,1,1,5,5,5,5,5,"演出一致"],["115.4.11","林裕民","",5,1,1,4,4,4,4,4,"優良"],["115.4.11","朱庭瑩","",4,1,1,5,5,5,5,5,""],["115.4.11","黃恒慶","",5,1,1,5,5,5,5,5,"稱職"]]}};
+
+/* =========================================================
+   12. 啟動
+   ========================================================= */
+(async function init(){
+  buildLinks(); bind();
+  await loadData(false);
+  buildFilters();
+  render();
+  $('#loader').classList.add('hidden');
+})();
+</script>
+</body>
+</html>
