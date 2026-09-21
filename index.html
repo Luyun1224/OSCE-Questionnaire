@@ -214,6 +214,9 @@ table.tbl tbody tr:nth-child(even){background:#FAF8F2}
 
 .notice{border:3px solid var(--line);background:var(--yellow);padding:12px 16px;font-weight:700;font-size:13px;margin-bottom:22px;box-shadow:var(--shadow-sm)}
 .notice.err{background:#FDE2DE}
+.notice .setup-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.notice .setup-row input{flex:1;min-width:280px;padding:8px 10px;border:3px solid var(--line);background:#fff;font-size:12px}
+.data-warning{background:#FEF8E8;border:2px solid var(--line);padding:10px 12px;margin:0 0 14px;font-size:12px;font-weight:700}
 .empty{padding:34px;text-align:center;color:var(--muted);font-weight:700;border:3px dashed var(--grey)}
 .hidden{display:none !important}
 .loader{position:fixed;inset:0;background:rgba(243,241,234,.94);z-index:90;display:grid;place-items:center}
@@ -297,11 +300,12 @@ table.tbl tbody tr:nth-child(even){background:#FAF8F2}
 /* =========================================================
    1. 設定區（部署後只需要改這裡）
    ========================================================= */
+function savedSetting(key){ try{return localStorage.getItem(key)||'';}catch(e){return '';} }
 const CONFIG = {
   // 貼上 Apps Script 網頁應用程式的 /exec 網址
-  API_URL: '',
+  API_URL: savedSetting('osce_api_url'),
   // 若 Code.gs 有設 TOKEN，這裡填相同字串
-  TOKEN: '',
+  TOKEN: savedSetting('osce_api_token'),
   // 側邊「問卷填寫」連結（換成你的 Google 表單網址）
   FORMS: [
     { name: '考官評核 SP',   url: '' },
@@ -403,7 +407,7 @@ const DIST_COLORS = ['#A12B1E','#D9694A','#B8B2A4','#4A7FC1','#12356B'];
 /* =========================================================
    3. 狀態
    ========================================================= */
-const STATE = { raw:null, source:'live', filters:{year:'ALL',session:'ALL',station:'ALL'}, selectedSP:'', view:'overview' };
+const STATE = { raw:null, source:'live', filters:{year:'ALL',session:'ALL',station:'ALL'}, selectedSP:'', view:'overview', loading:false };
 const CHARTS = [];
 const $  = (s,r)=> (r||document).querySelector(s);
 const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
@@ -426,26 +430,39 @@ function jsonp(url, timeout){
 }
 
 async function loadData(force){
+  if(STATE.loading) return false;
+  STATE.loading = true;
   setStatus('loading','讀取中…');
   if(!CONFIG.API_URL){
     STATE.raw = DEMO_DATA; STATE.source = 'demo';
     setStatus('offline','離線示範資料');
     $('#dataStamp').textContent = '示範資料（未設定 API）';
-    return;
+    STATE.loading = false;
+    return false;
   }
   try{
     const url = CONFIG.API_URL + '?action=all'
       + (CONFIG.TOKEN ? '&token='+encodeURIComponent(CONFIG.TOKEN) : '')
+      + '&_ts=' + Date.now()
       + (force ? '&nocache=1' : '');
     const res = await jsonp(url);
     if(!res || !res.ok) throw new Error((res && res.error) || '回傳格式錯誤');
     STATE.raw = res.data; STATE.source = 'live';
     setStatus('ok','資料連線正常');
     $('#dataStamp').textContent = '更新於 ' + (res.generatedAt||'');
+    return true;
   }catch(err){
-    STATE.raw = DEMO_DATA; STATE.source = 'demo';
-    setStatus('error','連線失敗，改用示範資料');
-    $('#dataStamp').textContent = '讀取失敗：' + err.message;
+    if(STATE.raw && STATE.source==='live'){
+      setStatus('error','更新失敗，保留上次資料');
+      $('#dataStamp').textContent = '更新失敗：' + err.message;
+    }else{
+      STATE.raw = DEMO_DATA; STATE.source = 'demo';
+      setStatus('error','連線失敗，改用示範資料');
+      $('#dataStamp').textContent = '讀取失敗：' + err.message;
+    }
+    return false;
+  }finally{
+    STATE.loading = false;
   }
 }
 
@@ -461,9 +478,20 @@ function setStatus(kind,text){
 function toRecords(key){
   const blk = STATE.raw && STATE.raw[key];
   if(!blk || !blk.headers) return [];
+  const aliases = {
+    '標準化病人姓名':'標準化病人','SP姓名':'標準化病人','SP 姓名':'標準化病人',
+    '標準化病人(SP)':'標準化病人','標準化病人（SP）':'標準化病人',
+    '日期':'考試日期','測驗日期':'考試日期'
+  };
   return blk.rows.map(r=>{
     const o = {};
-    blk.headers.forEach((h,i)=> o[h] = r[i]===undefined?'':r[i]);
+    blk.headers.forEach((h,i)=>{
+      const clean = String(h==null?'':h).replace(/^\uFEFF/,'').replace(/\s+/g,'').trim();
+      const canonical = aliases[clean] || clean;
+      const value = r[i]===undefined?'':r[i];
+      o[clean] = value;
+      if(!(canonical in o) || o[canonical]==='') o[canonical] = value;
+    });
     o.__date = normDate(o['考試日期']);
     o.__year = o.__date ? o.__date.split('.')[0] : '';
     return o;
@@ -472,9 +500,10 @@ function toRecords(key){
 
 function normDate(v){
   const s = String(v==null?'':v).trim();
-  const m = s.match(/^(\d{3})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/);
+  const m = s.match(/^(\d{2,4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
   if(!m) return '';
-  return m[1] + '.' + String(m[2]).padStart(2,'0') + '.' + String(m[3]).padStart(2,'0');
+  const year = +m[1] >= 1912 ? +m[1]-1911 : +m[1];
+  return year + '.' + String(m[2]).padStart(2,'0') + '.' + String(m[3]).padStart(2,'0');
 }
 function fmtDate(d){ return d ? d.replace(/\./g,'/') : '—'; }
 
@@ -918,8 +947,13 @@ function sourceNotice(){
   if(STATE.source==='live') return '';
   const msg = CONFIG.API_URL
     ? '目前顯示的是內建示範資料：無法連線到 Apps Script，請確認網頁應用程式已部署為「任何人皆可存取」。'
-    : '目前顯示的是內建示範資料（匯入自現有試算表）。請在 index.html 的 CONFIG.API_URL 貼上 Apps Script 的 /exec 網址，即可改讀取線上即時資料。';
-  return `<div class="notice ${CONFIG.API_URL?'err':''}">⚑ ${esc(msg)}</div>`;
+    : '目前顯示的是內建示範資料，不是 Google Sheet 的即時內容。請在下方貼上 Apps Script 的 /exec 網址。';
+  return `<div class="notice ${CONFIG.API_URL?'err':''}">⚑ ${esc(msg)}
+    <div class="setup-row">
+      <input id="apiUrlInput" type="url" value="${esc(CONFIG.API_URL)}" placeholder="https://script.google.com/macros/s/.../exec" aria-label="Apps Script API 網址">
+      <button class="btn w sm" data-act="save-api">儲存並連線</button>
+      ${CONFIG.API_URL?'<button class="btn w sm" data-act="clear-api">清除設定</button>':''}
+    </div></div>`;
 }
 
 function renderSheet(key){
@@ -1027,6 +1061,7 @@ function extrasHtml(key,S){
 
   if(key==='examinerSP'){
     const named = S.rows.filter(r=>String(r['標準化病人']||'').trim());
+    const unnamedCount = S.rows.length - named.length;
     const bySP = groupMean(named,'標準化病人',sc.items);
     const byEx = groupMean(S.rows,'考官姓名',sc.items);
     const names = bySP.map(x=>x.key).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
@@ -1040,9 +1075,10 @@ function extrasHtml(key,S){
     const selectedComments = collectComments(key,personalRows);
     const comparison = names.length ? `<div class="card"><h3>SP 個別與整體比較</h3>
       <p class="sub">選擇 SP 後，以目前年度／場次條件比較個人表現與全部 SP 評核的平均；反向題已轉為正向分數。</p>
+      ${unnamedCount ? `<div class="data-warning">⚠ 目前共有 ${S.rows.length} 筆評核，但其中 ${unnamedCount} 筆沒有可辨識的 SP 姓名，因此個別名單只顯示 ${names.length} 位。請確認 Sheet 欄名為「標準化病人」、「標準化病人姓名」或「SP姓名」，且每筆都有填寫姓名。</div>` : ''}
       <div class="person-filter"><label for="spPersonSelect">篩選標準化病人</label>
         <select id="spPersonSelect">${names.map(n=>`<option value="${esc(n)}"${n===STATE.selectedSP?' selected':''}>${esc(n)}</option>`).join('')}</select>
-        <span class="hint">目前可比較 ${names.length} 位 SP</span></div>
+        <span class="hint">目前可比較 ${names.length} 位具名 SP（共 ${S.rows.length} 筆評核）</span></div>
       <div class="grid g4" style="margin-bottom:22px">
         ${kpi('目前 SP',STATE.selectedSP,'','個別評核摘要','b')}
         ${kpi('被評核次數',personal.n,'次','考官完成的有效評核','n')}
@@ -1214,6 +1250,24 @@ function bind(){
     if(a.dataset.act==='print') window.print();
     if(a.dataset.act==='csv') exportItems();
     if(a.dataset.act==='csvc') exportComments();
+    if(a.dataset.act==='save-api'){
+      const input = $('#apiUrlInput');
+      const value = input ? input.value.trim() : '';
+      if(!/^https:\/\/script\.google\.com\/.*\/exec(?:\?.*)?$/.test(value)){
+        alert('請貼上以 https://script.google.com/ 開頭、/exec 結尾的 Apps Script 網頁應用程式網址。');
+        return;
+      }
+      CONFIG.API_URL = value.replace(/\?.*$/,'');
+      try{ localStorage.setItem('osce_api_url',CONFIG.API_URL); }catch(err){}
+      $('#loader').classList.remove('hidden');
+      await loadData(true); buildFilters(); render();
+      $('#loader').classList.add('hidden');
+    }
+    if(a.dataset.act==='clear-api'){
+      CONFIG.API_URL = '';
+      try{ localStorage.removeItem('osce_api_url'); }catch(err){}
+      await loadData(false); buildFilters(); render();
+    }
     if(a.dataset.act==='refresh'){
       $('#loader').classList.remove('hidden');
       await loadData(true); buildFilters(); render();
@@ -1257,6 +1311,12 @@ const DEMO_DATA = {"examiner":{"headers":["考試日期","考官姓名","站次"
   buildFilters();
   render();
   $('#loader').classList.add('hidden');
+  // 線上模式每分鐘重新抓取一次；時間戳參數可避開瀏覽器與代理快取。
+  setInterval(async ()=>{
+    if(!CONFIG.API_URL || document.hidden || STATE.loading) return;
+    const ok = await loadData(true);
+    if(ok){ buildFilters(); render(); }
+  },60000);
 })();
 </script>
 </body>
