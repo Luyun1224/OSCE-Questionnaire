@@ -176,6 +176,11 @@ a{color:inherit}
 .cmt p{margin:0;font-size:14px;white-space:pre-wrap;word-break:break-word}
 .cmt.alt{border-left-color:var(--blue)}
 .search{width:100%;padding:9px 12px;border:3px solid var(--line);font-weight:600;margin-bottom:14px}
+.person-filter{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#EFF5FB;border:3px solid var(--line);padding:14px 16px;margin-bottom:18px}
+.person-filter label{font-weight:900}
+.person-filter select{min-width:220px;padding:9px 38px 9px 11px;background:#fff;border:3px solid var(--line);font-weight:800}
+.person-filter .hint{font-size:12px;color:var(--muted);font-weight:700}
+.gap-pos{color:var(--ok);font-weight:900}.gap-neg{color:var(--red);font-weight:900}.gap-zero{color:var(--muted);font-weight:900}
 
 /* insights */
 .ins{display:flex;gap:11px;align-items:flex-start;border:3px solid var(--line);padding:12px 14px;margin-bottom:10px;background:#fff}
@@ -398,7 +403,7 @@ const DIST_COLORS = ['#A12B1E','#D9694A','#B8B2A4','#4A7FC1','#12356B'];
 /* =========================================================
    3. 狀態
    ========================================================= */
-const STATE = { raw:null, source:'live', filters:{year:'ALL',session:'ALL',station:'ALL'}, view:'overview' };
+const STATE = { raw:null, source:'live', filters:{year:'ALL',session:'ALL',station:'ALL'}, selectedSP:'', view:'overview' };
 const CHARTS = [];
 const $  = (s,r)=> (r||document).querySelector(s);
 const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
@@ -631,6 +636,16 @@ function radarChart(id,stats,label,color){
       plugins:{ legend:{display:false},
         tooltip:{ callbacks:{ label:c=>` ${c.label}：${c.formattedValue} 分`,
           afterLabel:c=> stats[c.dataIndex].reverse?'（反向題，已轉換為正向分數）':'' } } } }});
+}
+
+function comparisonRadarChart(id,personal,overall,personName){
+  mk(id,{ type:'radar',
+    data:{ labels:personal.map(s=>s.short), datasets:[
+      {label:personName, data:personal.map(s=>s.adj==null?null:+s.adj.toFixed(2)), borderColor:'#1B4F9C', backgroundColor:'#1B4F9C26', borderWidth:3, pointBackgroundColor:'#1B4F9C', pointBorderColor:'#101018', pointBorderWidth:2, pointRadius:4},
+      {label:'整體 SP 平均', data:overall.map(s=>s.adj==null?null:+s.adj.toFixed(2)), borderColor:'#F39220', backgroundColor:'#F392201A', borderWidth:3, borderDash:[7,4], pointBackgroundColor:'#F39220', pointBorderColor:'#101018', pointBorderWidth:2, pointRadius:4}
+    ]},
+    options:{maintainAspectRatio:false, scales:{r:{min:1,max:5,ticks:{stepSize:1,backdropColor:'transparent'},grid:{color:'#D8D4C8'},angleLines:{color:'#C9C4B8'},pointLabels:{font:{size:12,weight:700}}}},
+      plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:18,font:{weight:700}}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}：${c.formattedValue} 分`}}}}});
 }
 
 function trendChart(id,labels,datasets,min){
@@ -1014,7 +1029,38 @@ function extrasHtml(key,S){
     const named = S.rows.filter(r=>String(r['標準化病人']||'').trim());
     const bySP = groupMean(named,'標準化病人',sc.items);
     const byEx = groupMean(S.rows,'考官姓名',sc.items);
-    return `<div class="grid g2">
+    const names = bySP.map(x=>x.key).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+    if(names.length && names.indexOf(STATE.selectedSP)<0) STATE.selectedSP = names[0];
+    if(!names.length) STATE.selectedSP = '';
+    const personalRows = named.filter(r=>String(r['標準化病人']).trim()===STATE.selectedSP);
+    const personal = sheetStat(key,personalRows);
+    const overall = sheetStat(key,S.rows);
+    const gaps = personal.stats.map((s,i)=>({stat:s,overall:overall.stats[i],gap:s.adj==null||overall.stats[i].adj==null?null:s.adj-overall.stats[i].adj}));
+    const priorities = gaps.filter(x=>x.gap!=null).sort((a,b)=>a.gap-b.gap).slice(0,3);
+    const selectedComments = collectComments(key,personalRows);
+    const comparison = names.length ? `<div class="card"><h3>SP 個別與整體比較</h3>
+      <p class="sub">選擇 SP 後，以目前年度／場次條件比較個人表現與全部 SP 評核的平均；反向題已轉為正向分數。</p>
+      <div class="person-filter"><label for="spPersonSelect">篩選標準化病人</label>
+        <select id="spPersonSelect">${names.map(n=>`<option value="${esc(n)}"${n===STATE.selectedSP?' selected':''}>${esc(n)}</option>`).join('')}</select>
+        <span class="hint">目前可比較 ${names.length} 位 SP</span></div>
+      <div class="grid g4" style="margin-bottom:22px">
+        ${kpi('目前 SP',STATE.selectedSP,'','個別評核摘要','b')}
+        ${kpi('被評核次數',personal.n,'次','考官完成的有效評核','n')}
+        ${kpi('個人平均',r2(personal.composite),'/5','反向題已轉換','y')}
+        ${kpi('與整體差距',personal.composite==null||overall.composite==null?'—':(personal.composite-overall.composite>=0?'+':'')+r2(personal.composite-overall.composite),'分','整體 SP 平均 '+r2(overall.composite),'r')}
+      </div>
+      <div class="grid g2">
+        <div><h3 style="margin:0 0 4px">個人 vs 整體雷達圖</h3><p class="sub">藍色為 ${esc(STATE.selectedSP)}，橘色虛線為整體 SP 平均</p>${canvas('spCompare','tall')}</div>
+        <div><h3 style="margin:0 0 4px">差距與加強方向</h3><p class="sub">差距＝個人正向分數－整體 SP 平均</p>
+          <table class="tbl"><thead><tr><th class="l">能力面向</th><th>個人</th><th>整體</th><th>差距</th></tr></thead><tbody>
+          ${gaps.map(x=>{const cls=x.gap==null?'gap-zero':x.gap<-.01?'gap-neg':x.gap>.01?'gap-pos':'gap-zero';return `<tr><td class="l">${esc(x.stat.col)} ${esc(x.stat.short)}</td><td><b>${r2(x.stat.adj)}</b></td><td>${r2(x.overall.adj)}</td><td class="${cls}">${x.gap==null?'—':(x.gap>0?'+':'')+r2(x.gap)}</td></tr>`;}).join('')}
+          </tbody></table>
+          <div style="margin-top:14px">${priorities.map((x,i)=>`<div class="ins ${x.gap<-.25?'high':x.gap<0?'mid':'good'}"><span class="lv">${i===0?'優先加強':'關注面向'}</span><p><b>${esc(x.stat.short)}</b>：${x.gap<0?`低於整體 ${r2(Math.abs(x.gap))} 分，建議針對「${esc(x.stat.text)}」安排演練與回饋。`:`與整體相當或較佳（${x.gap>0?'+':''}${r2(x.gap)} 分），持續維持。`}</p></div>`).join('')}</div>
+        </div>
+      </div>
+      <div style="margin-top:18px"><h3 style="margin:0 0 4px">此 SP 的考官評語</h3><p class="sub">僅顯示目前選取 SP 的文字回饋</p>${commentsHtml(selectedComments,'selectedSP')}</div>
+    </div>` : `<div class="card"><h3>SP 個別與整體比較</h3><div class="empty">目前篩選條件下沒有具名 SP 資料，請放寬年度／場次條件，或在資料中補上「標準化病人」欄位。</div></div>`;
+    return comparison + `<div class="grid g2">
       <div class="card"><h3>SP 個別表現</h3>
         <p class="sub">僅統計有填寫標準化病人姓名的紀錄（反向題已轉換）</p>
         ${bySP.length ? `<table class="tbl"><thead><tr><th class="l">標準化病人</th><th>受評次數</th><th>平均</th><th>等級</th></tr></thead><tbody>` +
@@ -1063,6 +1109,9 @@ function extrasCharts(key,S,color){
   }
   if(key==='examinerSP'){
     stackChart('spStack', S.stats.map(s=>s.col+(s.reverse?'↓':'')+' '+s.short), S.stats.map(s=>s.dist), sc.scale);
+    const named = S.rows.filter(r=>String(r['標準化病人']||'').trim());
+    const personalRows = named.filter(r=>String(r['標準化病人']).trim()===STATE.selectedSP);
+    if(personalRows.length) comparisonRadarChart('spCompare',sheetStat(key,personalRows).stats,S.stats,STATE.selectedSP);
   }
 }
 
@@ -1177,6 +1226,12 @@ function bind(){
       const box = $(`[data-cmtlist="${e.target.dataset.search}"]`); if(!box) return;
       $$('.cmt',box).forEach(c=> c.classList.toggle('hidden',
         q && c.dataset.text.toLowerCase().indexOf(q)<0));
+    }
+  });
+  $('#main').addEventListener('change', e=>{
+    if(e.target.matches('#spPersonSelect')){
+      STATE.selectedSP = e.target.value;
+      render();
     }
   });
   $('#fYear').addEventListener('change', e=>{
